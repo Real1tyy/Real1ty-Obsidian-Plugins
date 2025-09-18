@@ -1,0 +1,113 @@
+{
+	"name": "@real1ty-obsidian-plugins/utils",
+	"version": "1.0.0",
+	"description": "Shared utilities for Obsidian plugins",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		},
+		"./testing": {
+			"types": "./dist/testing/index.d.ts",
+			"import": "./dist/testing/index.js"
+		},
+		"./*": {
+			"types": "./dist/*.d.ts",
+			"import": "./dist/*.js"
+		}
+	},
+	"files": [
+		"dist/**/*",
+		"README.md",
+		"LICENSE"
+	],
+	"scripts": {
+		"build": "tsc",
+		"dev": "tsc --watch",
+		"test": "vitest run",
+		"test:watch": "vitest watch",
+		"typecheck": "tsc -noEmit",
+		"clean": "rm -rf dist",
+		"prepublishOnly": "pnpm clean && pnpm build && pnpm test",
+		"minor-release": "pnpm version minor && pnpm publish",
+		"major-release": "pnpm version major && pnpm publish",
+		"breaking-release": "pnpm version major && pnpm publish"
+	},
+	"keywords": [
+		"obsidian",
+		"utilities",
+		"plugins",
+		"typescript"
+	],
+	"author": "Real1ty",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Real1tyy/Real1ty-Obsidian-Plugins",
+		"directory": "libs/utils"
+	},
+	"publishConfig": {
+		"access": "public",
+		"registry": "https://registry.npmjs.org/"
+	},
+	"devDependencies": {
+		"@types/luxon": "^3.7.1",
+		"typescript": "5.9.2",
+		"vitest": "^2.0.5"
+	},
+	"dependencies": {
+		"gray-matter": "^4.0.3",
+		"luxon": "^3.7.2",
+		"obsidian": "^1.8.7",
+		"rxjs": "^7.8.2",
+		"tslib": "2.8.1",
+		"zod": "^4.1.5"
+	},
+	"nx": {
+		"sourceRoot": "libs/utils/src",
+		"targets": {
+			"build": {
+				"executor": "nx:run-commands",
+				"options": {
+					"command": "pnpm build",
+					"cwd": "{projectRoot}"
+				}
+			},
+			"test": {
+				"executor": "nx:run-commands",
+				"options": {
+					"command": "pnpm test",
+					"cwd": "{projectRoot}"
+				}
+			},
+			"test:watch": {
+				"executor": "nx:run-commands",
+				"options": {
+					"command": "pnpm test:watch",
+					"cwd": "{projectRoot}"
+				}
+			},
+			"typecheck": {
+				"executor": "nx:run-commands",
+				"options": {
+					"command": "pnpm typecheck",
+					"cwd": "{projectRoot}"
+				}
+			},
+			"clean": {
+				"executor": "nx:run-commands",
+				"options": {
+					"command": "pnpm clean",
+					"cwd": "{projectRoot}"
+				}
+			}
+		},
+		"tags": [
+			"type:lib",
+			"scope:shared"
+		]
+	}
+}

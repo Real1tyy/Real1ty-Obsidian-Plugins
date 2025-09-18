@@ -1,0 +1,72 @@
+{
+	"$schema": "./node_modules/nx/schemas/nx-schema.json",
+	"namedInputs": {
+		"default": ["{projectRoot}/**/*", "sharedGlobals"],
+		"production": [
+			"default",
+			"!{projectRoot}/**/?(*.)+(spec|test).[jt]s?(x)?(.snap)",
+			"!{projectRoot}/tsconfig.spec.json",
+			"!{projectRoot}/jest.config.[jt]s",
+			"!{projectRoot}/vitest.config.[jt]s",
+			"!{projectRoot}/src/test-setup.[jt]s",
+			"!{projectRoot}/test-setup.[jt]s"
+		],
+		"sharedGlobals": [
+			"{workspaceRoot}/biome.json",
+			"{workspaceRoot}/tsconfig.json",
+			"{workspaceRoot}/pnpm-workspace.yaml"
+		]
+	},
+	"cli": {
+		"analytics": false,
+		"packageManager": "pnpm"
+	},
+	"nxCloudAccessToken": null,
+	"targetDefaults": {
+		"build": {
+			"dependsOn": ["^build"],
+			"inputs": ["production", "^production"],
+			"cache": true
+		},
+		"dev": {
+			"cache": false
+		},
+		"test": {
+			"inputs": ["default", "^production", "{workspaceRoot}/vitest.workspace.ts"],
+			"cache": true
+		},
+		"lint": {
+			"inputs": ["default", "{workspaceRoot}/biome.json"],
+			"cache": true
+		},
+		"format": {
+			"inputs": ["default", "{workspaceRoot}/biome.json"],
+			"cache": true
+		},
+		"check": {
+			"inputs": ["default", "{workspaceRoot}/biome.json"],
+			"cache": true
+		},
+		"typecheck": {
+			"inputs": ["default", "^production"],
+			"cache": true
+		}
+	},
+	"generators": {
+		"@nx/js:library": {
+			"unitTestRunner": "vitest"
+		}
+	},
+	"plugins": [
+		{
+			"plugin": "@nx/js",
+			"options": {
+				"buildTargetName": "build",
+				"testTargetName": "test"
+			}
+		}
+	],
+	"parallel": 3,
+	"cacheDirectory": ".nx/cache",
+	"defaultBase": "main"
+}

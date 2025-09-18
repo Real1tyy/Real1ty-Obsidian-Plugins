@@ -1,0 +1,24 @@
+{
+	"compilerOptions": {
+		"baseUrl": ".",
+		"paths": {
+			"@real1ty-obsidian-plugins/utils/*": ["./libs/utils/src/*"],
+			"@real1ty-obsidian-plugins/common-plugin/*": ["./libs/common-plugin/src/*"]
+		},
+		"inlineSourceMap": true,
+		"inlineSources": true,
+		"module": "ESNext",
+		"target": "ES6",
+		"allowJs": true,
+		"noImplicitAny": true,
+		"moduleResolution": "bundler",
+		"importHelpers": true,
+		"isolatedModules": true,
+		"strictNullChecks": true,
+		"allowSyntheticDefaultImports": true,
+		"esModuleInterop": true,
+		"lib": ["DOM", "ES5", "ES6", "ES7"]
+	},
+	"include": ["apps/**/*.ts", "libs/**/*.ts"],
+	"exclude": ["node_modules"]
+}
