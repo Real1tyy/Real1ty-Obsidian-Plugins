@@ -96,16 +96,13 @@ export function getNextBiWeeklyOccurrence(currentDate: DateTime, weekdays: Weekd
 	return nextWeekly.plus({ weeks: 1 });
 }
 
-/**
- * Iterates through all occurrence dates in a given range based on recurrence rules
- */
 export function* iterateOccurrencesInRange(
 	startDate: DateTime,
 	rrules: { type: RecurrenceType; weekdays?: Weekday[] },
 	rangeStart: DateTime,
 	rangeEnd: DateTime
 ): Generator<DateTime, void, unknown> {
-	let currentDate = startDate > rangeStart ? startDate : rangeStart;
+	let currentDate = startDate >= rangeStart ? startDate : rangeStart;
 
 	while (currentDate <= rangeEnd) {
 		// Check if current date should have an event
@@ -127,14 +124,13 @@ export function* iterateOccurrencesInRange(
 			yield currentDate;
 		}
 
-		// Calculate next occurrence
 		const nextDate = getNextOccurrence(currentDate, rrules.type, rrules.weekdays);
 
-		if (nextDate > rangeEnd) {
+		if (nextDate <= rangeEnd) {
+			currentDate = nextDate;
+		} else {
 			break;
 		}
-
-		currentDate = nextDate;
 	}
 }
 
@@ -148,4 +144,59 @@ export function calculateInstanceDateTime(instanceDate: DateTime, timeString?: s
 
 	const [hours, minutes] = timeString.split(":").map(Number);
 	return instanceDate.set({ hour: hours, minute: minutes, second: 0, millisecond: 0 });
+}
+
+export function calculateRecurringInstanceDateTime(
+	nextInstanceDateTime: DateTime,
+	nodeRecuringEventDateTime: DateTime,
+	recurrenceType: RecurrenceType,
+	allDay?: boolean
+): DateTime {
+	switch (recurrenceType) {
+		case "daily":
+		case "weekly":
+		case "bi-weekly": {
+			if (allDay) {
+				return nextInstanceDateTime.startOf("day");
+			}
+			return nextInstanceDateTime.set({
+				hour: nodeRecuringEventDateTime.hour,
+				minute: nodeRecuringEventDateTime.minute,
+				second: 0,
+				millisecond: 0,
+			});
+		}
+
+		case "monthly":
+		case "bi-monthly": {
+			if (allDay) {
+				// Inherit day from original, set time to 00:00
+				return nextInstanceDateTime.set({ day: nodeRecuringEventDateTime.day }).startOf("day");
+			}
+
+			// Inherit day + time from original
+			return nodeRecuringEventDateTime.set({
+				year: nextInstanceDateTime.year,
+				month: nextInstanceDateTime.month,
+			});
+		}
+
+		case "yearly": {
+			if (allDay) {
+				return nextInstanceDateTime
+					.set({
+						month: nodeRecuringEventDateTime.month,
+						day: nodeRecuringEventDateTime.day,
+					})
+					.startOf("day");
+			}
+
+			return nodeRecuringEventDateTime.set({
+				year: nextInstanceDateTime.year,
+			});
+		}
+
+		default:
+			return nextInstanceDateTime.startOf("day");
+	}
 }

@@ -53,10 +53,10 @@ export const formatDuration = (minutes: number): string => {
 };
 
 /**
- * Parse time string from datetime value - extracts HH:mm format
+ * Parse time string from datetime value - returns DateTime object
  * Rejects plain HH:mm format, requires full datetime
  */
-export const parseTimeString = (value: string | null): string | undefined => {
+export const parseTimeString = (value: string | null): DateTime | undefined => {
 	if (value === null) return undefined;
 
 	const v = value.trim();
@@ -71,14 +71,14 @@ export const parseTimeString = (value: string | null): string | undefined => {
 	if (!dt.isValid) dt = DateTime.fromSQL(v, { setZone: true }); // "YYYY-MM-DD HH:mm[:ss]" etc.
 	if (!dt.isValid) dt = DateTime.fromFormat(v, "yyyy-MM-dd HH:mm", { setZone: true });
 
-	return dt.isValid ? dt.toFormat("HH:mm") : undefined;
+	return dt.isValid ? dt : undefined;
 };
 
 /**
  * Parse and validate datetime strings for event parsing
  * Supports multiple formats including date-only and datetime formats
  */
-export const parseDateTimeString = (value: string | null): string | undefined => {
+export const parseDateTimeString = (value: string | null): DateTime | undefined => {
 	if (value === null) return undefined;
 
 	const v = value.trim();
@@ -89,23 +89,23 @@ export const parseDateTimeString = (value: string | null): string | undefined =>
 
 	// 1. Try ISO format first (most common)
 	dt = DateTime.fromISO(v, { setZone: true });
-	if (dt.isValid) return dt.toISO({ suppressMilliseconds: true }) || undefined;
+	if (dt.isValid) return dt;
 
 	// 2. Try SQL format (YYYY-MM-DD HH:mm:ss)
 	dt = DateTime.fromSQL(v, { setZone: true });
-	if (dt.isValid) return dt.toISO({ suppressMilliseconds: true }) || undefined;
+	if (dt.isValid) return dt;
 
 	// 3. Try common format with space (YYYY-MM-DD HH:mm)
 	dt = DateTime.fromFormat(v, "yyyy-MM-dd HH:mm", { setZone: true });
-	if (dt.isValid) return dt.toISO({ suppressMilliseconds: true }) || undefined;
+	if (dt.isValid) return dt;
 
 	// 4. Try date-only format (YYYY-MM-DD) - treat as start of day
 	dt = DateTime.fromFormat(v, "yyyy-MM-dd", { setZone: true });
-	if (dt.isValid) return dt.toISO({ suppressMilliseconds: true }) || undefined;
+	if (dt.isValid) return dt;
 
 	// 5. Try ISO date format (YYYY-MM-DD)
 	dt = DateTime.fromISO(v, { setZone: true });
-	if (dt.isValid) return dt.toISO({ suppressMilliseconds: true }) || undefined;
+	if (dt.isValid) return dt;
 
 	return undefined;
 };
