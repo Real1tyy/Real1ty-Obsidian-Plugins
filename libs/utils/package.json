@@ -32,9 +32,9 @@
 		"typecheck": "tsc -noEmit",
 		"clean": "rm -rf dist",
 		"prepublishOnly": "pnpm clean && pnpm build && pnpm test",
-		"minor-release": "pnpm version minor && pnpm publish",
-		"major-release": "pnpm version major && pnpm publish",
-		"breaking-release": "pnpm version major && pnpm publish"
+		"minor-release": "pnpm version minor && pnpm publish --no-git-checks",
+		"major-release": "pnpm version major && pnpm publish --no-git-checks",
+		"breaking-release": "pnpm version major && pnpm publish --no-git-checks"
 	},
 	"keywords": [
 		"obsidian",
