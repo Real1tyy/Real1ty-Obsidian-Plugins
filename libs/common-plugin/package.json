@@ -1,6 +1,6 @@
 {
 	"name": "@real1ty-obsidian-plugins/common-plugin",
-	"version": "1.1.0",
+	"version": "1.1.1",
 	"description": "Abstract Obsidian plugin base for path mapping and content rendering",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
@@ -16,7 +16,10 @@
 		}
 	},
 	"files": [
-		"dist/**/*",
+		"dist/**/*.js",
+		"dist/**/*.d.ts",
+		"dist/**/*.js.map",
+		"dist/**/*.d.ts.map",
 		"README.md",
 		"LICENSE"
 	],

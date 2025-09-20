@@ -5,7 +5,7 @@
 			"@real1ty-obsidian-plugins/utils/*": ["./libs/utils/src/*"],
 			"@real1ty-obsidian-plugins/common-plugin/*": ["./libs/common-plugin/src/*"]
 		},
-		"inlineSourceMap": true,
+		"sourceMap": true,
 		"inlineSources": true,
 		"module": "ESNext",
 		"target": "ES6",
