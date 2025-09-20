@@ -28,6 +28,7 @@
 		"test:watch": "vitest watch",
 		"typecheck": "tsc -noEmit",
 		"prepublishOnly": "pnpm clean && pnpm build && pnpm test",
+		"patch-release": "pnpm version patch && pnpm publish --no-git-checks",
 		"minor-release": "pnpm version minor && pnpm publish --no-git-checks",
 		"major-release": "pnpm version major && pnpm publish --no-git-checks",
 		"breaking-release": "pnpm version major && pnpm publish --no-git-checks"
