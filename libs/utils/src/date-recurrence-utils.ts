@@ -152,6 +152,9 @@ export function calculateRecurringInstanceDateTime(
 	recurrenceType: RecurrenceType,
 	allDay?: boolean
 ): DateTime {
+	// Convert the original event time to the target timezone once to preserve local time
+	const originalInTargetZone = nodeRecuringEventDateTime.setZone(nextInstanceDateTime.zone);
+
 	switch (recurrenceType) {
 		case "daily":
 		case "weekly":
@@ -159,9 +162,10 @@ export function calculateRecurringInstanceDateTime(
 			if (allDay) {
 				return nextInstanceDateTime.startOf("day");
 			}
+
 			return nextInstanceDateTime.set({
-				hour: nodeRecuringEventDateTime.hour,
-				minute: nodeRecuringEventDateTime.minute,
+				hour: originalInTargetZone.hour,
+				minute: originalInTargetZone.minute,
 				second: 0,
 				millisecond: 0,
 			});
@@ -170,14 +174,15 @@ export function calculateRecurringInstanceDateTime(
 		case "monthly":
 		case "bi-monthly": {
 			if (allDay) {
-				// Inherit day from original, set time to 00:00
-				return nextInstanceDateTime.set({ day: nodeRecuringEventDateTime.day }).startOf("day");
+				return nextInstanceDateTime.set({ day: originalInTargetZone.day }).startOf("day");
 			}
 
-			// Inherit day + time from original
-			return nodeRecuringEventDateTime.set({
-				year: nextInstanceDateTime.year,
-				month: nextInstanceDateTime.month,
+			return nextInstanceDateTime.set({
+				day: originalInTargetZone.day,
+				hour: originalInTargetZone.hour,
+				minute: originalInTargetZone.minute,
+				second: 0,
+				millisecond: 0,
 			});
 		}
 
@@ -185,14 +190,19 @@ export function calculateRecurringInstanceDateTime(
 			if (allDay) {
 				return nextInstanceDateTime
 					.set({
-						month: nodeRecuringEventDateTime.month,
-						day: nodeRecuringEventDateTime.day,
+						month: originalInTargetZone.month,
+						day: originalInTargetZone.day,
 					})
 					.startOf("day");
 			}
 
-			return nodeRecuringEventDateTime.set({
-				year: nextInstanceDateTime.year,
+			return nextInstanceDateTime.set({
+				month: originalInTargetZone.month,
+				day: originalInTargetZone.day,
+				hour: originalInTargetZone.hour,
+				minute: originalInTargetZone.minute,
+				second: 0,
+				millisecond: 0,
 			});
 		}
 
