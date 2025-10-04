@@ -21,7 +21,16 @@
 		"graph": "npx nx graph",
 		"affected:build": "npx nx affected -t build",
 		"affected:test": "npx nx affected -t test",
-		"affected:lint": "npx nx affected -t lint"
+		"affected:lint": "npx nx affected -t lint",
+		"publish:common-plugin:patch": "pnpm --filter @real1ty-obsidian-plugins/common-plugin patch-release",
+		"publish:common-plugin:minor": "pnpm --filter @real1ty-obsidian-plugins/common-plugin minor-release",
+		"publish:common-plugin:major": "pnpm --filter @real1ty-obsidian-plugins/common-plugin major-release",
+		"publish:utils:patch": "pnpm --filter @real1ty-obsidian-plugins/utils patch-release",
+		"publish:utils:minor": "pnpm --filter @real1ty-obsidian-plugins/utils minor-release",
+		"publish:utils:major": "pnpm --filter @real1ty-obsidian-plugins/utils major-release",
+		"publish:libs:patch": "pnpm run publish:common-plugin:patch && pnpm run publish:utils:patch",
+		"publish:libs:minor": "pnpm run publish:common-plugin:minor && pnpm run publish:utils:minor",
+		"publish:libs:major": "pnpm run publish:common-plugin:major && pnpm run publish:utils:major"
 	},
 	"keywords": [
 		"obsidian",
