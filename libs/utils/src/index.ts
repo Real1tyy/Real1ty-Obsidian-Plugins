@@ -6,6 +6,7 @@ export * from "./date-utils";
 export * from "./evaluator-base";
 export * from "./file-operations";
 export * from "./file-utils";
+export * from "./frontmatter-utils";
 export * from "./generate";
 export * from "./link-parser";
 export * from "./settings-store";
