@@ -21,16 +21,7 @@
 		"graph": "npx nx graph",
 		"affected:build": "npx nx affected -t build",
 		"affected:test": "npx nx affected -t test",
-		"affected:lint": "npx nx affected -t lint",
-		"publish:utils:minor": "cd libs/utils && pnpm minor-release",
-		"publish:utils:major": "cd libs/utils && pnpm major-release",
-		"publish:utils:breaking": "cd libs/utils && pnpm breaking-release",
-		"publish:common-plugin:minor": "cd libs/common-plugin && pnpm minor-release",
-		"publish:common-plugin:major": "cd libs/common-plugin && pnpm major-release",
-		"publish:common-plugin:breaking": "cd libs/common-plugin && pnpm breaking-release",
-		"publish:all:minor": "pnpm publish:utils:minor && pnpm publish:common-plugin:minor",
-		"publish:all:major": "pnpm publish:utils:major && pnpm publish:common-plugin:major",
-		"publish:all:breaking": "pnpm publish:utils:breaking && pnpm publish:common-plugin:breaking"
+		"affected:lint": "npx nx affected -t lint"
 	},
 	"keywords": [
 		"obsidian",
