@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { parseFrontmatterRecord, parseFrontmatterValue, serializeFrontmatterValue } from "../src/frontmatter-utils";
+import {
+	parseFrontmatterRecord,
+	parseFrontmatterValue,
+	serializeFrontmatterValue,
+} from "../src/frontmatter-utils";
 
 describe("frontmatter-utils", () => {
 	describe("serializeFrontmatterValue", () => {
@@ -147,11 +151,12 @@ describe("frontmatter-utils", () => {
 
 			// Objects
 			expect(parseFrontmatterValue(serializeFrontmatterValue({}))).toEqual({});
-			expect(parseFrontmatterValue(serializeFrontmatterValue({ key: "value" }))).toEqual({ key: "value" });
+			expect(parseFrontmatterValue(serializeFrontmatterValue({ key: "value" }))).toEqual({
+				key: "value",
+			});
 
 			// Strings
 			expect(parseFrontmatterValue(serializeFrontmatterValue("hello"))).toBe("hello");
 		});
 	});
 });
-

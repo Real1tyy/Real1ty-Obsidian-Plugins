@@ -10,5 +10,6 @@ export * from "./frontmatter-utils";
 export * from "./generate";
 export * from "./link-parser";
 export * from "./settings-store";
+export * from "./settings-ui-builder";
 export * from "./string-utils";
 export * from "./templater-utils";
