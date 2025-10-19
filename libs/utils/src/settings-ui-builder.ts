@@ -1,5 +1,5 @@
-import { Setting } from "obsidian";
-import type { ZodObject, ZodRawShape, z } from "zod";
+import { Notice, Setting } from "obsidian";
+import type { ZodArray, ZodNumber, ZodObject, ZodRawShape, z } from "zod";
 import type { SettingsStore } from "./settings-store";
 
 interface BaseSettingConfig {
@@ -18,10 +18,17 @@ interface SliderSettingConfig extends BaseSettingConfig {
 	step?: number;
 }
 
-interface ArraySettingConfig extends BaseSettingConfig {
+interface DropdownSettingConfig extends BaseSettingConfig {
+	options: Record<string, string>;
+}
+
+interface ArraySettingConfig<T = string> extends BaseSettingConfig {
 	placeholder?: string;
 	arrayDelimiter?: string;
 	multiline?: boolean;
+	itemType?: "string" | "number";
+	parser?: (input: string) => T;
+	validator?: (item: T) => boolean;
 }
 
 interface ArrayManagerConfig extends BaseSettingConfig {
@@ -52,14 +59,86 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 		return this.settingsStore.currentSettings;
 	}
 
+	private get schema(): TSchema {
+		return this.settingsStore.validationSchema;
+	}
+
 	private async updateSetting(key: keyof z.infer<TSchema>, value: unknown): Promise<void> {
-		await this.settingsStore.updateSettings(
-			(s) =>
-				({
-					...s,
-					[key]: value,
-				}) as z.infer<TSchema>
-		);
+		const newSettings = {
+			...this.settings,
+			[key]: value,
+		} as z.infer<TSchema>;
+
+		const result = this.schema.safeParse(newSettings);
+
+		if (!result.success) {
+			const errors = result.error.issues
+				.map((e) => `${String(e.path.join("."))}${e.path.length > 0 ? ": " : ""}${e.message}`)
+				.join(", ");
+			new Notice(`Validation failed: ${errors}`, 5000);
+			throw new Error(`Validation failed: ${errors}`);
+		}
+
+		await this.settingsStore.updateSettings(() => newSettings);
+	}
+
+	private inferSliderBounds(key: string): { min?: number; max?: number; step?: number } {
+		try {
+			const fieldSchema = (this.schema.shape as any)[key];
+			if (!fieldSchema) return {};
+
+			let innerSchema = fieldSchema;
+			while ((innerSchema as any)._def?.innerType) {
+				innerSchema = (innerSchema as any)._def.innerType;
+			}
+
+			if ((innerSchema as any)._def?.typeName === "ZodNumber") {
+				const checks = ((innerSchema as ZodNumber)._def as any).checks || [];
+				let min: number | undefined;
+				let max: number | undefined;
+
+				for (const check of checks) {
+					if ((check as any).kind === "min") {
+						min = (check as any).value;
+					}
+					if ((check as any).kind === "max") {
+						max = (check as any).value;
+					}
+				}
+
+				return { min, max };
+			}
+		} catch (error) {
+			console.warn(`Failed to infer slider bounds for key ${key}:`, error);
+		}
+
+		return {};
+	}
+
+	private inferArrayItemType(key: string): "string" | "number" | undefined {
+		try {
+			const fieldSchema = (this.schema.shape as any)[key];
+			if (!fieldSchema) return undefined;
+
+			let innerSchema = fieldSchema;
+			while ((innerSchema as any)._def?.innerType) {
+				innerSchema = (innerSchema as any)._def.innerType;
+			}
+
+			if ((innerSchema as any)._def?.typeName === "ZodArray") {
+				const elementType = ((innerSchema as ZodArray<any>)._def as any).type;
+				if ((elementType as any)._def?.typeName === "ZodNumber") {
+					return "number";
+				}
+				if ((elementType as any)._def?.typeName === "ZodString") {
+					return "string";
+				}
+			}
+		} catch (error) {
+			console.warn(`Failed to infer array item type for key ${key}:`, error);
+		}
+
+		return undefined;
 	}
 
 	addToggle(containerEl: HTMLElement, config: BaseSettingConfig): void {
@@ -77,8 +156,12 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 	}
 
 	addSlider(containerEl: HTMLElement, config: SliderSettingConfig): void {
-		const { key, name, desc, min = 0, max = 100, step = 1 } = config;
+		const { key, name, desc, step = 1 } = config;
 		const value = this.settings[key as keyof z.infer<TSchema>];
+
+		const inferredBounds = this.inferSliderBounds(key);
+		const min = config.min ?? inferredBounds.min ?? 0;
+		const max = config.max ?? inferredBounds.max ?? 100;
 
 		new Setting(containerEl)
 			.setName(name)
@@ -113,9 +196,42 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 			);
 	}
 
-	addTextArray(containerEl: HTMLElement, config: ArraySettingConfig): void {
+	addDropdown(containerEl: HTMLElement, config: DropdownSettingConfig): void {
+		const { key, name, desc, options } = config;
+		const value = this.settings[key as keyof z.infer<TSchema>];
+
+		new Setting(containerEl)
+			.setName(name)
+			.setDesc(desc)
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOptions(options)
+					.setValue(String(value))
+					.onChange(async (newValue) => {
+						await this.updateSetting(key as keyof z.infer<TSchema>, newValue);
+					})
+			);
+	}
+
+	addTextArray<T = string>(containerEl: HTMLElement, config: ArraySettingConfig<T>): void {
 		const { key, name, desc, placeholder = "", arrayDelimiter = ", ", multiline = false } = config;
-		const value = this.settings[key as keyof z.infer<TSchema>] as string[];
+		const value = this.settings[key as keyof z.infer<TSchema>] as T[];
+
+		const inferredItemType = config.itemType ?? this.inferArrayItemType(key) ?? "string";
+		const parser =
+			config.parser ??
+			((input: string) => {
+				if (inferredItemType === "number") {
+					const num = Number(input);
+					if (Number.isNaN(num)) {
+						throw new Error(`Invalid number: ${input}`);
+					}
+					return num as T;
+				}
+				return input as T;
+			});
+
+		const validator = config.validator ?? ((_item: T) => true);
 
 		const setting = new Setting(containerEl).setName(name).setDesc(desc);
 
@@ -125,11 +241,17 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 				text.setValue(Array.isArray(value) ? value.join("\n") : "");
 
 				const commit = async (inputValue: string) => {
-					const items = inputValue
+					const lines = inputValue
 						.split("\n")
 						.map((s) => s.trim())
 						.filter((s) => s.length > 0);
-					await this.updateSetting(key as keyof z.infer<TSchema>, items);
+
+					try {
+						const items = lines.map(parser).filter(validator);
+						await this.updateSetting(key as keyof z.infer<TSchema>, items);
+					} catch (error) {
+						new Notice(`Invalid input: ${error}`, 5000);
+					}
 				};
 
 				text.inputEl.addEventListener("blur", () => void commit(text.inputEl.value));
@@ -148,11 +270,17 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 				text.setPlaceholder(placeholder);
 				text.setValue(Array.isArray(value) ? value.join(arrayDelimiter) : "");
 				text.onChange(async (inputValue) => {
-					const items = inputValue
+					const tokens = inputValue
 						.split(",")
 						.map((s) => s.trim())
 						.filter((s) => s.length > 0);
-					await this.updateSetting(key as keyof z.infer<TSchema>, items);
+
+					try {
+						const items = tokens.map(parser).filter(validator);
+						await this.updateSetting(key as keyof z.infer<TSchema>, items);
+					} catch (error) {
+						new Notice(`Invalid input: ${error}`, 5000);
+					}
 				});
 			});
 		}
@@ -289,29 +417,6 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 						render();
 					})
 				);
-		}
-	}
-
-	/**
-	 * Automatically detect the type from current value and create appropriate control
-	 */
-	auto(
-		containerEl: HTMLElement,
-		config: TextSettingConfig & SliderSettingConfig & ArraySettingConfig
-	): void {
-		const value = this.settings[config.key as keyof z.infer<TSchema>];
-
-		// Detect type from current value
-		if (typeof value === "boolean") {
-			this.addToggle(containerEl, config);
-		} else if (typeof value === "number") {
-			this.addSlider(containerEl, config);
-		} else if (typeof value === "string") {
-			this.addText(containerEl, config);
-		} else if (Array.isArray(value)) {
-			this.addTextArray(containerEl, config);
-		} else {
-			console.warn(`Unsupported value type for key ${config.key}: ${typeof value}`);
 		}
 	}
 }

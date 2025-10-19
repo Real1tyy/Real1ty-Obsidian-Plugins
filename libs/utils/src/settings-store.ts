@@ -17,6 +17,10 @@ export class SettingsStore<TSchema extends z.ZodTypeAny> {
 		return this.settings$.value;
 	}
 
+	get validationSchema(): TSchema {
+		return this.schema;
+	}
+
 	async loadSettings(): Promise<void> {
 		try {
 			const data = await this.plugin.loadData();
