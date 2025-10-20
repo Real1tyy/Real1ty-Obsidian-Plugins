@@ -102,34 +102,66 @@ export function* iterateOccurrencesInRange(
 	rangeStart: DateTime,
 	rangeEnd: DateTime
 ): Generator<DateTime, void, unknown> {
-	let currentDate = startDate >= rangeStart ? startDate : rangeStart;
+	// Normalize to start of day for comparison
+	const normalizedStart = startDate.startOf("day");
+	const normalizedRangeStart = rangeStart.startOf("day");
+	const normalizedRangeEnd = rangeEnd.startOf("day");
 
-	while (currentDate <= rangeEnd) {
-		// Check if current date should have an event
-		let shouldAddEvent = false;
+	// Start from the later of startDate or rangeStart
+	let currentDate =
+		normalizedStart >= normalizedRangeStart ? normalizedStart : normalizedRangeStart;
 
-		if (rrules.type === "daily") {
-			shouldAddEvent = true;
-		} else if (rrules.type === "weekly" || rrules.type === "bi-weekly") {
-			if (rrules.weekdays && rrules.weekdays.length > 0) {
-				shouldAddEvent = isDateOnWeekdays(currentDate, rrules.weekdays);
-			} else {
-				shouldAddEvent = true;
+	// For weekly/bi-weekly with weekdays, we need to track which week we're in
+	if (
+		(rrules.type === "weekly" || rrules.type === "bi-weekly") &&
+		rrules.weekdays &&
+		rrules.weekdays.length > 0
+	) {
+		// Calculate week offset from start date
+		const weeksFromStart = Math.floor(currentDate.diff(normalizedStart, "weeks").weeks);
+
+		// For bi-weekly, we only want even weeks (0, 2, 4...) from the start date
+		const weekInterval = rrules.type === "bi-weekly" ? 2 : 1;
+
+		// Adjust to the correct week if we're in an off-week
+		const weekOffset = weeksFromStart % weekInterval;
+		if (weekOffset !== 0) {
+			currentDate = currentDate.plus({ weeks: weekInterval - weekOffset });
+		}
+
+		// Now iterate through weeks, checking each day
+		while (currentDate <= normalizedRangeEnd) {
+			// Check all 7 days of the current week
+			for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+				const checkDate = currentDate.plus({ days: dayOffset });
+
+				// Only yield if within range and matches a target weekday
+				if (
+					checkDate >= normalizedRangeStart &&
+					checkDate <= normalizedRangeEnd &&
+					isDateOnWeekdays(checkDate, rrules.weekdays)
+				) {
+					yield checkDate;
+				}
 			}
-		} else {
-			shouldAddEvent = true;
+
+			// Move to next occurrence week (1 week for weekly, 2 weeks for bi-weekly)
+			currentDate = currentDate.plus({ weeks: weekInterval });
 		}
+	} else {
+		// For other recurrence types (daily, monthly, yearly, or weekly without weekdays)
+		while (currentDate <= normalizedRangeEnd) {
+			if (currentDate >= normalizedRangeStart) {
+				yield currentDate;
+			}
 
-		if (shouldAddEvent) {
-			yield currentDate;
-		}
+			const nextDate = getNextOccurrence(currentDate, rrules.type, rrules.weekdays);
 
-		const nextDate = getNextOccurrence(currentDate, rrules.type, rrules.weekdays);
-
-		if (nextDate <= rangeEnd) {
-			currentDate = nextDate;
-		} else {
-			break;
+			if (nextDate <= normalizedRangeEnd) {
+				currentDate = nextDate;
+			} else {
+				break;
+			}
 		}
 	}
 }
