@@ -10,12 +10,14 @@ interface BaseSettingConfig {
 
 interface TextSettingConfig extends BaseSettingConfig {
 	placeholder?: string;
+	commitOnChange?: boolean;
 }
 
 interface SliderSettingConfig extends BaseSettingConfig {
 	min?: number;
 	max?: number;
 	step?: number;
+	commitOnChange?: boolean;
 }
 
 interface DropdownSettingConfig extends BaseSettingConfig {
@@ -26,6 +28,7 @@ interface ArraySettingConfig<T = string> extends BaseSettingConfig {
 	placeholder?: string;
 	arrayDelimiter?: string;
 	multiline?: boolean;
+	commitOnChange?: boolean;
 	itemType?: "string" | "number";
 	parser?: (input: string) => T;
 	validator?: (item: T) => boolean;
@@ -156,7 +159,7 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 	}
 
 	addSlider(containerEl: HTMLElement, config: SliderSettingConfig): void {
-		const { key, name, desc, step = 1 } = config;
+		const { key, name, desc, step = 1, commitOnChange = false } = config;
 		const value = this.settings[key as keyof z.infer<TSchema>];
 
 		const inferredBounds = this.inferSliderBounds(key);
@@ -167,33 +170,82 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 			.setName(name)
 			.setDesc(desc)
 			.addSlider((slider) => {
-				slider
-					.setLimits(min, max, step)
-					.setValue(Number(value))
-					.setDynamicTooltip()
-					.onChange(async (newValue) => {
+				slider.setLimits(min, max, step).setValue(Number(value)).setDynamicTooltip();
+
+				if (commitOnChange) {
+					// Reactive: commit on every change
+					slider.onChange(async (newValue) => {
 						await this.updateSetting(key as keyof z.infer<TSchema>, newValue);
 					});
+				} else {
+					// Commit only when user finishes dragging
+					const commit = async (newValue: number) => {
+						try {
+							await this.updateSetting(key as keyof z.infer<TSchema>, newValue);
+						} catch (error) {
+							new Notice(`Invalid input: ${error}`, 5000);
+						}
+					};
+
+					// Update tooltip during drag for visual feedback
+					slider.onChange((newValue) => {
+						slider.sliderEl.setAttribute("aria-valuenow", String(newValue));
+					});
+
+					// Commit on mouse up
+					slider.sliderEl.addEventListener("mouseup", () => {
+						void commit(Number(slider.sliderEl.value));
+					});
+
+					// Commit on keyboard navigation
+					slider.sliderEl.addEventListener("keyup", (e: KeyboardEvent) => {
+						if (
+							["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(e.key)
+						) {
+							void commit(Number(slider.sliderEl.value));
+						}
+					});
+				}
 
 				return slider;
 			});
 	}
 
 	addText(containerEl: HTMLElement, config: TextSettingConfig): void {
-		const { key, name, desc, placeholder = "" } = config;
+		const { key, name, desc, placeholder = "", commitOnChange = false } = config;
 		const value = this.settings[key as keyof z.infer<TSchema>];
 
 		new Setting(containerEl)
 			.setName(name)
 			.setDesc(desc)
-			.addText((text) =>
-				text
-					.setPlaceholder(placeholder)
-					.setValue(String(value ?? ""))
-					.onChange(async (newValue) => {
+			.addText((text) => {
+				text.setPlaceholder(placeholder);
+				text.setValue(String(value ?? ""));
+
+				if (commitOnChange) {
+					// Reactive: commit on every change
+					text.onChange(async (newValue) => {
 						await this.updateSetting(key as keyof z.infer<TSchema>, newValue);
-					})
-			);
+					});
+				} else {
+					// Commit only on blur or Ctrl/Cmd+Enter
+					const commit = async (inputValue: string) => {
+						try {
+							await this.updateSetting(key as keyof z.infer<TSchema>, inputValue);
+						} catch (error) {
+							new Notice(`Invalid input: ${error}`, 5000);
+						}
+					};
+
+					text.inputEl.addEventListener("blur", () => void commit(text.inputEl.value));
+					text.inputEl.addEventListener("keydown", (e: KeyboardEvent) => {
+						if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+							e.preventDefault();
+							void commit(text.inputEl.value);
+						}
+					});
+				}
+			});
 	}
 
 	addDropdown(containerEl: HTMLElement, config: DropdownSettingConfig): void {
@@ -214,7 +266,15 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 	}
 
 	addTextArray<T = string>(containerEl: HTMLElement, config: ArraySettingConfig<T>): void {
-		const { key, name, desc, placeholder = "", arrayDelimiter = ", ", multiline = false } = config;
+		const {
+			key,
+			name,
+			desc,
+			placeholder = "",
+			arrayDelimiter = ", ",
+			multiline = false,
+			commitOnChange = false,
+		} = config;
 		const value = this.settings[key as keyof z.infer<TSchema>] as T[];
 
 		const inferredItemType = config.itemType ?? this.inferArrayItemType(key) ?? "string";
@@ -254,13 +314,21 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 					}
 				};
 
-				text.inputEl.addEventListener("blur", () => void commit(text.inputEl.value));
-				text.inputEl.addEventListener("keydown", (e: KeyboardEvent) => {
-					if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-						e.preventDefault();
-						void commit(text.inputEl.value);
-					}
-				});
+				if (commitOnChange) {
+					// Reactive: commit on every change
+					text.onChange(async (inputValue) => {
+						await commit(inputValue);
+					});
+				} else {
+					// Commit only on blur or Ctrl/Cmd+Enter
+					text.inputEl.addEventListener("blur", () => void commit(text.inputEl.value));
+					text.inputEl.addEventListener("keydown", (e: KeyboardEvent) => {
+						if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+							e.preventDefault();
+							void commit(text.inputEl.value);
+						}
+					});
+				}
 
 				text.inputEl.rows = 5;
 				text.inputEl.classList.add("settings-ui-builder-textarea");
@@ -269,7 +337,8 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 			setting.addText((text) => {
 				text.setPlaceholder(placeholder);
 				text.setValue(Array.isArray(value) ? value.join(arrayDelimiter) : "");
-				text.onChange(async (inputValue) => {
+
+				const commit = async (inputValue: string) => {
 					const tokens = inputValue
 						.split(",")
 						.map((s) => s.trim())
@@ -281,7 +350,23 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 					} catch (error) {
 						new Notice(`Invalid input: ${error}`, 5000);
 					}
-				});
+				};
+
+				if (commitOnChange) {
+					// Reactive: commit on every change
+					text.onChange(async (inputValue) => {
+						await commit(inputValue);
+					});
+				} else {
+					// Commit only on blur or Ctrl/Cmd+Enter
+					text.inputEl.addEventListener("blur", () => void commit(text.inputEl.value));
+					text.inputEl.addEventListener("keydown", (e: KeyboardEvent) => {
+						if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+							e.preventDefault();
+							void commit(text.inputEl.value);
+						}
+					});
+				}
 			});
 		}
 	}

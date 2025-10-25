@@ -310,7 +310,7 @@ describe("SettingsUIBuilder", () => {
 			expect(slider.step).toBe("5");
 		});
 
-		it("should update settings when slider changes", async () => {
+		it("should update settings when slider changes (commit on blur by default)", async () => {
 			uiBuilder.addSlider(container, {
 				key: "maxItems",
 				name: "Max Items",
@@ -318,6 +318,27 @@ describe("SettingsUIBuilder", () => {
 				min: 0,
 				max: 100,
 				step: 5,
+			});
+
+			const slider = container.querySelector(".slider") as HTMLInputElement;
+			slider.value = "50";
+			slider.dispatchEvent(new Event("mouseup"));
+
+			// Wait for async update
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(settingsStore.currentSettings.maxItems).toBe(50);
+		});
+
+		it("should update settings on every change when commitOnChange is true", async () => {
+			uiBuilder.addSlider(container, {
+				key: "maxItems",
+				name: "Max Items",
+				desc: "Maximum number of items",
+				min: 0,
+				max: 100,
+				step: 5,
+				commitOnChange: true,
 			});
 
 			const slider = container.querySelector(".slider") as HTMLInputElement;
@@ -362,11 +383,29 @@ describe("SettingsUIBuilder", () => {
 			expect(input.placeholder).toBe("Enter username");
 		});
 
-		it("should update settings when text changes", async () => {
+		it("should update settings when text changes (commit on blur by default)", async () => {
 			uiBuilder.addText(container, {
 				key: "username",
 				name: "Username",
 				desc: "Your username",
+			});
+
+			const input = container.querySelector(".text-input") as HTMLInputElement;
+			input.value = "newuser";
+			input.dispatchEvent(new Event("blur"));
+
+			// Wait for async update
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(settingsStore.currentSettings.username).toBe("newuser");
+		});
+
+		it("should update settings on every change when commitOnChange is true", async () => {
+			uiBuilder.addText(container, {
+				key: "username",
+				name: "Username",
+				desc: "Your username",
+				commitOnChange: true,
 			});
 
 			const input = container.querySelector(".text-input") as HTMLInputElement;
@@ -411,11 +450,29 @@ describe("SettingsUIBuilder", () => {
 			expect(textarea.value).toBe("tag1\ntag2\ntag3");
 		});
 
-		it("should update settings when array text changes", async () => {
+		it("should update settings when array text changes (commit on blur by default)", async () => {
 			uiBuilder.addTextArray(container, {
 				key: "tags",
 				name: "Tags",
 				desc: "List of tags",
+			});
+
+			const input = container.querySelector(".text-input") as HTMLInputElement;
+			input.value = "new1, new2, new3";
+			input.dispatchEvent(new Event("blur"));
+
+			// Wait for async update
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(settingsStore.currentSettings.tags).toEqual(["new1", "new2", "new3"]);
+		});
+
+		it("should update settings on every change when commitOnChange is true", async () => {
+			uiBuilder.addTextArray(container, {
+				key: "tags",
+				name: "Tags",
+				desc: "List of tags",
+				commitOnChange: true,
 			});
 
 			const input = container.querySelector(".text-input") as HTMLInputElement;
