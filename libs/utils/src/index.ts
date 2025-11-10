@@ -9,6 +9,8 @@ export * from "./core";
 export * from "./date";
 // File operations
 export * from "./file";
+// Input utilities
+export * from "./inputs";
 export * from "./settings";
 // String utilities
 export * from "./string";
