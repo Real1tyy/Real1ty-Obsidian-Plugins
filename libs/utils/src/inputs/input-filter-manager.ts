@@ -5,7 +5,7 @@ const DEFAULT_DEBOUNCE_MS = 150;
 export interface InputFilterManagerOptions {
 	placeholder: string;
 	cssClass: string;
-    cssPrefix: string;
+	cssPrefix: string;
 	onFilterChange: FilterChangeCallback;
 	initiallyVisible?: boolean;
 	onHide?: () => void;
