@@ -1,6 +1,8 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { type App, Notice, TFile } from "obsidian";
+import { generateZettelId } from "../core/generate";
+import { generateUniqueFilePath } from "./file";
 import { extractFilePathFromLink } from "./link-parser";
 
 export const fromRoot = (relativePath: string): string => {
@@ -174,8 +176,6 @@ export const duplicateFileWithNewZettelId = async (
 	zettelIdProp?: string
 ): Promise<TFile> => {
 	const content = await app.vault.read(file);
-	const { generateZettelId } = await import("./generate");
-	const { generateUniqueFilePath } = await import("./file");
 
 	const parentPath = file.parent?.path || "";
 	const baseNameWithoutZettel = file.basename.replace(/-\d{14}$/, "");

@@ -3,8 +3,8 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { SettingsStore } from "../src/settings-store";
-import { SettingsUIBuilder } from "../src/settings-ui-builder";
+import { SettingsStore } from "../../src/settings/settings-store";
+import { SettingsUIBuilder } from "../../src/settings/settings-ui-builder";
 
 // Mock Obsidian
 vi.mock("obsidian", () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { createFileLink } from "../src/file-operations";
-import { extractFilePathFromLink } from "../src/link-parser";
-import { createMockFile } from "../src/testing";
+import { createFileLink } from "../../src/file/file-operations";
+import { extractFilePathFromLink } from "../../src/file/link-parser";
+import { createMockFile } from "../../src/testing";
 
 describe("extractFilePathFromLink", () => {
 	describe("Valid Obsidian link formats", () => {

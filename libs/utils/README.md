@@ -69,16 +69,36 @@ const mockFile = createMockFile('test.md');
 
 ### Available Modules
 
+The package is organized by domain/module:
+
+**Settings**
+- `settings-store` - Reactive settings management with Zod validation
+- `settings-ui-builder` - Declarative UI builder for settings tabs
+
+**File Operations**
+- `file` - File path utilities, folder notes, and file context
+- `file-operations` - File system operations and helpers
+- `child-reference` - Hierarchical reference management
+- `frontmatter` - Frontmatter parsing and serialization
+- `link-parser` - Wiki link parsing utilities
+- `templater` - Templater plugin integration
+
+**Date Operations**
+- `date` - Date/time formatting and manipulation
+- `date-recurrence` - Recurrence pattern handling
+
+**Async Utilities**
 - `async` - Promise utilities and async helpers
 - `batch-operations` - Bulk processing functions
-- `child-reference` - Hierarchical reference management
-- `date-recurrence` - Recurrence pattern handling
-- `date` - Date/time formatting and manipulation
-- `file-operations` - File system operations
-- `file` - File path and content utilities
-- `settings-store` - Reactive settings management
+
+**String Utilities**
 - `string` - String processing functions
-- `templater` - Template processing utilities
+
+**Core Utilities**
+- `evaluator-base` - Base evaluator class
+- `generate` - ID generation utilities
+
+**Testing**
 - `testing` - Testing mocks and utilities
 
 ## TypeScript Support

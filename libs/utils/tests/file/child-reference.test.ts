@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { TFile } from "../src/testing";
+import { TFile } from "../../src/testing";
 
 // Mock dependencies
-vi.mock("../src/file-operations", () => ({
+vi.mock("../../src/file/file-operations", () => ({
 	createFileLink: vi.fn(),
 }));
 
-vi.mock("../src/link-parser", () => ({
+vi.mock("../../src/file/link-parser", () => ({
 	extractFilePathFromLink: vi.fn(),
 }));
 
@@ -16,9 +16,9 @@ import {
 	normalizeChildReference,
 	normalizeChildReferences,
 	type VaultAdapter,
-} from "../src/child-reference";
-import { createFileLink } from "../src/file-operations";
-import { extractFilePathFromLink } from "../src/link-parser";
+} from "../../src/file/child-reference";
+import { createFileLink } from "../../src/file/file-operations";
+import { extractFilePathFromLink } from "../../src/file/link-parser";
 
 const mockCreateFileLink = vi.mocked(createFileLink);
 const mockExtractFilePathFromLink = vi.mocked(extractFilePathFromLink);

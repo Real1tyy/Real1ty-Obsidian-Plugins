@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { SettingsStore } from "../src/settings-store";
-import { createMockApp, Plugin } from "../src/testing";
+import { SettingsStore } from "../../src/settings/settings-store";
+import { createMockApp, Plugin } from "../../src/testing";
 
 // Test schemas
 const SimpleSchema = z.object({

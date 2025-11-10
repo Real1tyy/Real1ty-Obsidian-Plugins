@@ -3,7 +3,7 @@ import {
 	parseFrontmatterRecord,
 	parseFrontmatterValue,
 	serializeFrontmatterValue,
-} from "../src/frontmatter";
+} from "../../src/file/frontmatter";
 
 describe("frontmatter", () => {
 	describe("serializeFrontmatterValue", () => {
