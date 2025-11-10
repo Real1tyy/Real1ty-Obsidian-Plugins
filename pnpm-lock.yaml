@@ -39,8 +39,8 @@ importers:
   libs/common-plugin:
     dependencies:
       '@real1ty-obsidian-plugins/utils':
-        specifier: workspace:*
-        version: link:../utils
+        specifier: ^1.0.0
+        version: 1.2.2(@codemirror/state@6.5.2)(@codemirror/view@6.38.2)
       obsidian:
         specifier: latest
         version: 1.8.7(@codemirror/state@6.5.2)(@codemirror/view@6.38.2)
@@ -82,6 +82,9 @@ importers:
       '@types/luxon':
         specifier: ^3.7.1
         version: 3.7.1
+      fast-check:
+        specifier: ^4.3.0
+        version: 4.3.0
       typescript:
         specifier: 5.9.2
         version: 5.9.2
@@ -1023,6 +1026,9 @@ packages:
   '@nx/workspace@21.5.2':
     resolution: {integrity: sha512-7IDa5xqVwGgZXrFGqyMzZTOq0Okxc0KH6M0mLfHJy1393iEUJjLByfkQ0nDyjsRZsLqo11WMOldapBDwy6MlaQ==}
 
+  '@real1ty-obsidian-plugins/utils@1.2.2':
+    resolution: {integrity: sha512-7ZoXrMOTqa5Oz6LnwoLIdgl/TsVjklQM+tf3e1klhS+DIvKoAJv3O3y0C7+knW3QEALJUXJcRFm1jcWZBP78ZA==}
+
   '@rollup/rollup-android-arm-eabi@4.50.2':
     resolution: {integrity: sha512-uLN8NAiFVIRKX9ZQha8wy6UUs06UNSZ32xj6giK/rmMXAgKahwExvK6SsmgU5/brh4w/nSgj8e0k3c1HBQpa0A==}
     cpu: [arm]
@@ -1499,6 +1505,10 @@ packages:
     resolution: {integrity: sha512-zCnTtlxNoAiDc3gqY2aYAWFx7XWWiasuF2K8Me5WbN8otHKTUKBwjPtNpRs/rbUZm7KxWAaNj7P1a/p52GbVug==}
     engines: {node: '>=0.10.0'}
 
+  fast-check@4.3.0:
+    resolution: {integrity: sha512-JVw/DJSxVKl8uhCb7GrwanT9VWsCIdBkK3WpP37B/Au4pyaspriSjtrY2ApbSFwTg3ViPfniT13n75PhzE7VEQ==}
+    engines: {node: '>=12.17.0'}
+
   fdir@6.5.0:
     resolution: {integrity: sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg==}
     engines: {node: '>=12.0.0'}
@@ -1896,6 +1906,9 @@ packages:
   punycode@2.3.1:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
+
+  pure-rand@7.0.1:
+    resolution: {integrity: sha512-oTUZM/NAZS8p7ANR3SHh30kXB+zK2r2BPcEn/awJIbOvq82WoMN4p62AWWp3Hhw50G0xMsw1mhIBLqHw64EcNQ==}
 
   react-is@18.3.1:
     resolution: {integrity: sha512-/LLMVyas0ljjAtoYiPqYiL8VWXzUUdThrmU5+n20DZv+a+ClRoevUzw5JxU+Ieh5/c87ytoTBV9G1FiKfNJdmg==}
@@ -3358,6 +3371,18 @@ snapshots:
       - '@swc/core'
       - debug
 
+  '@real1ty-obsidian-plugins/utils@1.2.2(@codemirror/state@6.5.2)(@codemirror/view@6.38.2)':
+    dependencies:
+      gray-matter: 4.0.3
+      luxon: 3.7.2
+      obsidian: 1.8.7(@codemirror/state@6.5.2)(@codemirror/view@6.38.2)
+      rxjs: 7.8.2
+      tslib: 2.8.1
+      zod: 4.1.9
+    transitivePeerDependencies:
+      - '@codemirror/state'
+      - '@codemirror/view'
+
   '@rollup/rollup-android-arm-eabi@4.50.2':
     optional: true
 
@@ -3808,6 +3833,10 @@ snapshots:
     dependencies:
       is-extendable: 0.1.1
 
+  fast-check@4.3.0:
+    dependencies:
+      pure-rand: 7.0.1
+
   fdir@6.5.0(picomatch@4.0.3):
     optionalDependencies:
       picomatch: 4.0.3
@@ -4257,6 +4286,8 @@ snapshots:
   proxy-from-env@1.1.0: {}
 
   punycode@2.3.1: {}
+
+  pure-rand@7.0.1: {}
 
   react-is@18.3.1: {}
 

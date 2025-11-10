@@ -1,5 +1,3 @@
-import type { BehaviorSubject } from "rxjs";
-
 import { BaseEvaluator, type BaseRule } from "./base";
 
 export interface FilterRule extends BaseRule {}
