@@ -1,6 +1,6 @@
 {
 	"name": "@real1ty-obsidian-plugins/utils",
-	"version": "2.3.0",
+	"version": "2.4.0",
 	"description": "Shared utilities for Obsidian plugins",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -20,10 +20,8 @@
 		}
 	},
 	"files": [
-		"dist/**/*.js",
-		"dist/**/*.d.ts",
-		"dist/**/*.js.map",
-		"dist/**/*.d.ts.map",
+		"dist",
+		"src",
 		"README.md",
 		"LICENSE"
 	],
