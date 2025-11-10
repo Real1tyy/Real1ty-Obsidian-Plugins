@@ -233,6 +233,13 @@ export function debounce<T extends (...args: any[]) => any>(
 	}) as T;
 }
 
+// normalizePath mock - simple path normalization for tests
+export function normalizePath(path: string): string {
+	// Basic normalization: replace backslashes with forward slashes
+	// and remove duplicate slashes
+	return path.replace(/\\/g, "/").replace(/\/+/g, "/");
+}
+
 // App mock
 export const App = vi.fn();
 

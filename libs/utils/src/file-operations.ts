@@ -175,7 +175,7 @@ export const duplicateFileWithNewZettelId = async (
 ): Promise<TFile> => {
 	const content = await app.vault.read(file);
 	const { generateZettelId } = await import("./generate");
-	const { generateUniqueFilePath } = await import("./file-utils");
+	const { generateUniqueFilePath } = await import("./file");
 
 	const parentPath = file.parent?.path || "";
 	const baseNameWithoutZettel = file.basename.replace(/-\d{14}$/, "");
