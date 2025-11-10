@@ -3,9 +3,9 @@ import {
 	parseFrontmatterRecord,
 	parseFrontmatterValue,
 	serializeFrontmatterValue,
-} from "../src/frontmatter-utils";
+} from "../src/frontmatter";
 
-describe("frontmatter-utils", () => {
+describe("frontmatter", () => {
 	describe("serializeFrontmatterValue", () => {
 		it("should serialize strings as-is", () => {
 			expect(serializeFrontmatterValue("hello")).toBe("hello");

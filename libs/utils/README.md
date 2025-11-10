@@ -69,16 +69,16 @@ const mockFile = createMockFile('test.md');
 
 ### Available Modules
 
-- `async-utils` - Promise utilities and async helpers
+- `async` - Promise utilities and async helpers
 - `batch-operations` - Bulk processing functions
-- `child-reference-utils` - Hierarchical reference management
-- `date-recurrence-utils` - Recurrence pattern handling
-- `date-utils` - Date/time formatting and manipulation
+- `child-reference` - Hierarchical reference management
+- `date-recurrence` - Recurrence pattern handling
+- `date` - Date/time formatting and manipulation
 - `file-operations` - File system operations
-- `file-utils` - File path and content utilities
+- `file` - File path and content utilities
 - `settings-store` - Reactive settings management
-- `string-utils` - String processing functions
-- `templater-utils` - Template processing utilities
+- `string` - String processing functions
+- `templater` - Template processing utilities
 - `testing` - Testing mocks and utilities
 
 ## TypeScript Support

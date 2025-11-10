@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { onceAsync, onceAsyncKeyed, onceAsyncResettable } from "../src/async-utils";
+import { onceAsync, onceAsyncKeyed, onceAsyncResettable } from "../src/async";
 
 describe("onceAsync", () => {
 	it("should execute the function only once", async () => {

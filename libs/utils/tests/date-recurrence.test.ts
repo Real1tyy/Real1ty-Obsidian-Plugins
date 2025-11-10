@@ -9,9 +9,9 @@ import {
 	isDateOnWeekdays,
 	iterateOccurrencesInRange,
 	type Weekday,
-} from "../src/date-recurrence-utils";
+} from "../src/date-recurrence";
 
-describe("date-recurrence-utils", () => {
+describe("date-recurrence", () => {
 	describe("isDateOnWeekdays", () => {
 		it("should correctly identify if a date is on specified weekdays", () => {
 			const monday = DateTime.fromISO("2025-10-20"); // Monday

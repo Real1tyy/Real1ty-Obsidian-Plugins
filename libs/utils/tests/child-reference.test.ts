@@ -16,7 +16,7 @@ import {
 	normalizeChildReference,
 	normalizeChildReferences,
 	type VaultAdapter,
-} from "../src/child-reference-utils";
+} from "../src/child-reference";
 import { createFileLink } from "../src/file-operations";
 import { extractFilePathFromLink } from "../src/link-parser";
 
