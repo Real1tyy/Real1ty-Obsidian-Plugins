@@ -127,7 +127,9 @@ export function formatValue(value: unknown): string {
  * Supports both [[path]] and [[path|alias]] formats.
  * Returns null if the string is not a wiki link.
  */
-export function parseWikiLink(value: string): { linkPath: string; displayText: string } | null {
+export function parseWikiLinkWithDisplay(
+	value: string
+): { linkPath: string; displayText: string } | null {
 	const wikiLinkMatch = value.match(/^\[\[([^\]]*)\]\]$/);
 	if (!wikiLinkMatch) {
 		return null;

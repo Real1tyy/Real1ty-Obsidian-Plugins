@@ -14,7 +14,7 @@ import {
 	normalizeProperty,
 	parseInlineWikiLinks,
 	parseValue,
-	parseWikiLink,
+	parseWikiLinkWithDisplay,
 	removeWikiLinks,
 	serializeValue,
 	truncateString,
@@ -270,12 +270,12 @@ describe("formatValue", () => {
 });
 
 // ============================================================================
-// parseWikiLink Tests
+// parseWikiLinkWithDisplay Tests
 // ============================================================================
 
-describe("parseWikiLink", () => {
+describe("parseWikiLinkWithDisplay", () => {
 	it("should parse simple wiki link", () => {
-		const result = parseWikiLink("[[My Note]]");
+		const result = parseWikiLinkWithDisplay("[[My Note]]");
 		expect(result).toEqual({
 			linkPath: "My Note",
 			displayText: "My Note",
@@ -283,7 +283,7 @@ describe("parseWikiLink", () => {
 	});
 
 	it("should parse wiki link with alias", () => {
-		const result = parseWikiLink("[[path/to/note|Display Name]]");
+		const result = parseWikiLinkWithDisplay("[[path/to/note|Display Name]]");
 		expect(result).toEqual({
 			linkPath: "path/to/note",
 			displayText: "Display Name",
@@ -291,7 +291,7 @@ describe("parseWikiLink", () => {
 	});
 
 	it("should handle wiki link with path", () => {
-		const result = parseWikiLink("[[folder/subfolder/note]]");
+		const result = parseWikiLinkWithDisplay("[[folder/subfolder/note]]");
 		expect(result).toEqual({
 			linkPath: "folder/subfolder/note",
 			displayText: "folder/subfolder/note",
@@ -299,13 +299,13 @@ describe("parseWikiLink", () => {
 	});
 
 	it("should return null for non-wiki-link strings", () => {
-		expect(parseWikiLink("plain text")).toBeNull();
-		expect(parseWikiLink("[[incomplete")).toBeNull();
-		expect(parseWikiLink("incomplete]]")).toBeNull();
+		expect(parseWikiLinkWithDisplay("plain text")).toBeNull();
+		expect(parseWikiLinkWithDisplay("[[incomplete")).toBeNull();
+		expect(parseWikiLinkWithDisplay("incomplete]]")).toBeNull();
 	});
 
 	it("should handle wiki links with whitespace", () => {
-		const result = parseWikiLink("[[  My Note  |  Display  ]]");
+		const result = parseWikiLinkWithDisplay("[[  My Note  |  Display  ]]");
 		expect(result).toEqual({
 			linkPath: "My Note",
 			displayText: "Display",
@@ -313,7 +313,7 @@ describe("parseWikiLink", () => {
 	});
 
 	it("should handle empty wiki links", () => {
-		const result = parseWikiLink("[[]]");
+		const result = parseWikiLinkWithDisplay("[[]]");
 		expect(result).toEqual({
 			linkPath: "",
 			displayText: "",
@@ -321,7 +321,7 @@ describe("parseWikiLink", () => {
 	});
 
 	it("should handle multiple pipes (takes first)", () => {
-		const result = parseWikiLink("[[path|alias|extra]]");
+		const result = parseWikiLinkWithDisplay("[[path|alias|extra]]");
 		expect(result).toEqual({
 			linkPath: "path",
 			displayText: "alias|extra",
