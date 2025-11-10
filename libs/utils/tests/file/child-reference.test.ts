@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TFile } from "../../src/testing";
 
-// Mock dependencies
+// Mock dependencies - mock individual files to avoid circular mocking
 vi.mock("../../src/file/file-operations", () => ({
 	createFileLink: vi.fn(),
 }));
@@ -16,7 +16,7 @@ import {
 	normalizeChildReference,
 	normalizeChildReferences,
 	type VaultAdapter,
-} from "../../src/file/child-reference";
+} from "../../src/file";
 import { createFileLink } from "../../src/file/file-operations";
 import { extractFilePathFromLink } from "../../src/file/link-parser";
 

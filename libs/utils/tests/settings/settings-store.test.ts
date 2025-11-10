@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { SettingsStore } from "../../src/settings/settings-store";
+import { SettingsStore } from "../../src/settings";
 import { createMockApp, Plugin } from "../../src/testing";
 
 // Test schemas

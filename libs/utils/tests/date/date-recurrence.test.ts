@@ -9,7 +9,7 @@ import {
 	isDateOnWeekdays,
 	iterateOccurrencesInRange,
 	type Weekday,
-} from "../../src/date/date-recurrence";
+} from "../../src/date";
 
 describe("date-recurrence", () => {
 	describe("isDateOnWeekdays", () => {

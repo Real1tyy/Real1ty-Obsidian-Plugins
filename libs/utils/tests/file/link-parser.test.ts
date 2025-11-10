@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createFileLink } from "../../src/file/file-operations";
-import { extractFilePathFromLink } from "../../src/file/link-parser";
+import { createFileLink, extractFilePathFromLink } from "../../src/file";
 import { createMockFile } from "../../src/testing";
 
 describe("extractFilePathFromLink", () => {

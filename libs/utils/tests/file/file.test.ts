@@ -6,7 +6,7 @@ import {
 	getParentByFolder,
 	getUniqueFilePath,
 	isFolderNote,
-} from "../../src/file/file";
+} from "../../src/file";
 import { TFile } from "../../src/testing/mocks/obsidian";
 
 describe("getUniqueFilePath", () => {

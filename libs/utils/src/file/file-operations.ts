@@ -1,7 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { type App, Notice, TFile } from "obsidian";
-import { generateZettelId } from "../core/generate";
+import { generateZettelId } from "../core";
 import { generateUniqueFilePath } from "./file";
 import { extractFilePathFromLink } from "./link-parser";
 

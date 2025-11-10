@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createFromTemplate, isTemplaterAvailable } from "../../src/file/templater";
+import { createFromTemplate, isTemplaterAvailable } from "../../src/file";
 
 // Mock normalizePath from obsidian
 vi.mock("obsidian", async () => {
