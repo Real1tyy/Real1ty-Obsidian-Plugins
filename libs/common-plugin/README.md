@@ -102,6 +102,8 @@ const result = parser.parse('your-dsl-content');
 
 `MountableView` is a mixin that provides lifecycle management and utility methods for Obsidian views. It handles mounting/unmounting, subscription management, and provides a loading indicator.
 
+**Basic Usage (no prefix):**
+
 ```typescript
 import { MountableView } from '@real1ty-obsidian-plugins/common-plugin';
 import { ItemView } from 'obsidian';
@@ -120,18 +122,49 @@ class MyView extends MountableView(ItemView) {
 }
 ```
 
+**With Prefix (recommended for plugin-specific styling):**
+
+```typescript
+import { MountableView } from '@real1ty-obsidian-plugins/common-plugin';
+import { ItemView } from 'obsidian';
+
+// Pass a prefix to customize CSS class names
+class MyView extends MountableView(ItemView, "prisma") {
+  async mount(): Promise<void> {
+    this.showLoading(this.containerEl, "Loading content…");
+    // ... load your content
+    this.hideLoading();
+  }
+
+  async unmount(): Promise<void> {
+    // Cleanup when view closes
+  }
+}
+```
+
 #### Styling the Loading Indicator
 
-The `showLoading()` method creates elements with specific CSS classes that **must be styled in your plugin's `styles.css` file**. The default classes are:
+The `showLoading()` method creates elements with specific CSS classes that **must be styled in your plugin's `styles.css` file**. The class names are prefixed based on the prefix passed to `MountableView()`.
 
+**Without prefix** - Default classes:
 - `.mountable-loading-container` - Container element
 - `.mountable-loading-spinner` - Spinner element
 - `.mountable-loading-text` - Text element
 
-**Required CSS in your `styles.css`:**
+**With prefix** (e.g., `MountableView(ItemView, "prisma")`):
+- `.prisma-mountable-loading-container`
+- `.prisma-mountable-loading-spinner`
+- `.prisma-mountable-loading-text`
+
+**Required CSS in your `styles.css` (with "prisma" prefix example):**
 
 ```css
-.mountable-loading-container {
+@keyframes prisma-mountable-spin {
+  0% { transform: rotate(0); }
+  100% { transform: rotate(360deg); }
+}
+
+.prisma-mountable-loading-container {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -140,22 +173,17 @@ The `showLoading()` method creates elements with specific CSS classes that **mus
   min-height: 100px;
 }
 
-@keyframes mountable-spin {
-  0% { transform: rotate(0); }
-  100% { transform: rotate(360deg); }
-}
-
-.mountable-loading-spinner {
+.prisma-mountable-loading-spinner {
   width: 20px;
   height: 20px;
   border: 2px solid var(--background-modifier-border);
   border-top: 2px solid var(--interactive-accent);
   border-radius: 50%;
-  animation: mountable-spin 1s linear infinite;
+  animation: prisma-mountable-spin 1s linear infinite;
   margin: 0 auto 8px;
 }
 
-.mountable-loading-text {
+.prisma-mountable-loading-text {
   text-align: center;
   color: var(--text-muted);
   font-size: 0.9em;

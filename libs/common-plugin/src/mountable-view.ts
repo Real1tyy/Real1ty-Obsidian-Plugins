@@ -6,7 +6,7 @@ export interface Subscription {
 	unsubscribe(): void;
 }
 
-export function MountableView<TBase extends AbstractCtor<ItemView>>(Base: TBase) {
+export function MountableView<TBase extends AbstractCtor<ItemView>>(Base: TBase, prefix?: string) {
 	abstract class Mountable extends Base {
 		// use ECMAScript private fields to avoid TS4094
 		#mounted = false;
@@ -14,6 +14,12 @@ export function MountableView<TBase extends AbstractCtor<ItemView>>(Base: TBase)
 		#resizeObserver: ResizeObserver | null = null;
 		#resizeTimeout: ReturnType<typeof setTimeout> | null = null;
 		#loadingEl: HTMLElement | null = null;
+		#classPrefix: string;
+
+		constructor(...args: any[]) {
+			super(...args);
+			this.#classPrefix = prefix ? `${prefix}-mountable` : "mountable";
+		}
 
 		// subclasses must implement these
 		abstract mount(): Promise<void>;
@@ -27,15 +33,27 @@ export function MountableView<TBase extends AbstractCtor<ItemView>>(Base: TBase)
 		 * Shows a loading indicator in the specified container.
 		 *
 		 * **Styling Requirements:**
-		 * Inheritors must provide CSS styles in their plugin's `styles.css` file for the following classes:
+		 * Inheritors must provide CSS styles in their plugin's `styles.css` file for the following classes.
+		 * The class names are prefixed based on the prefix passed to `MountableView()`.
 		 *
+		 * Default classes (when no prefix is provided):
 		 * - `.mountable-loading-container` - Container element (flex layout recommended)
 		 * - `.mountable-loading-spinner` - Spinner element (animation recommended)
 		 * - `.mountable-loading-text` - Text element
 		 *
-		 * **Example CSS:**
+		 * With prefix (e.g., `MountableView(Base, "prisma")`):
+		 * - `.prisma-mountable-loading-container`
+		 * - `.prisma-mountable-loading-spinner`
+		 * - `.prisma-mountable-loading-text`
+		 *
+		 * **Example CSS (with "prisma" prefix):**
 		 * ```css
-		 * .mountable-loading-container {
+		 * @keyframes prisma-mountable-spin {
+		 *   0% { transform: rotate(0); }
+		 *   100% { transform: rotate(360deg); }
+		 * }
+		 *
+		 * .prisma-mountable-loading-container {
 		 *   display: flex;
 		 *   flex-direction: column;
 		 *   align-items: center;
@@ -44,22 +62,17 @@ export function MountableView<TBase extends AbstractCtor<ItemView>>(Base: TBase)
 		 *   min-height: 100px;
 		 * }
 		 *
-		 * @keyframes mountable-spin {
-		 *   0% { transform: rotate(0); }
-		 *   100% { transform: rotate(360deg); }
-		 * }
-		 *
-		 * .mountable-loading-spinner {
+		 * .prisma-mountable-loading-spinner {
 		 *   width: 20px;
 		 *   height: 20px;
 		 *   border: 2px solid var(--background-modifier-border);
 		 *   border-top: 2px solid var(--interactive-accent);
 		 *   border-radius: 50%;
-		 *   animation: mountable-spin 1s linear infinite;
+		 *   animation: prisma-mountable-spin 1s linear infinite;
 		 *   margin: 0 auto 8px;
 		 * }
 		 *
-		 * .mountable-loading-text {
+		 * .prisma-mountable-loading-text {
 		 *   text-align: center;
 		 *   color: var(--text-muted);
 		 *   font-size: 0.9em;
@@ -90,9 +103,9 @@ export function MountableView<TBase extends AbstractCtor<ItemView>>(Base: TBase)
 			}
 		): void {
 			this.hideLoading();
-			const containerClass = classes?.container ?? "mountable-loading-container";
-			const spinnerClass = classes?.spinner ?? "mountable-loading-spinner";
-			const textClass = classes?.text ?? "mountable-loading-text";
+			const containerClass = classes?.container ?? `${this.#classPrefix}-loading-container`;
+			const spinnerClass = classes?.spinner ?? `${this.#classPrefix}-loading-spinner`;
+			const textClass = classes?.text ?? `${this.#classPrefix}-loading-text`;
 
 			this.#loadingEl = container.createDiv(containerClass);
 			this.#loadingEl.createDiv(spinnerClass);
