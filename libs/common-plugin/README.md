@@ -98,6 +98,84 @@ const parser = new DSLParser();
 const result = parser.parse('your-dsl-content');
 ```
 
+### MountableView
+
+`MountableView` is a mixin that provides lifecycle management and utility methods for Obsidian views. It handles mounting/unmounting, subscription management, and provides a loading indicator.
+
+```typescript
+import { MountableView } from '@real1ty-obsidian-plugins/common-plugin';
+import { ItemView } from 'obsidian';
+
+class MyView extends MountableView(ItemView) {
+  async mount(): Promise<void> {
+    // Initialize your view content
+    this.showLoading(this.containerEl, "Loading content…");
+    // ... load your content
+    this.hideLoading();
+  }
+
+  async unmount(): Promise<void> {
+    // Cleanup when view closes
+  }
+}
+```
+
+#### Styling the Loading Indicator
+
+The `showLoading()` method creates elements with specific CSS classes that **must be styled in your plugin's `styles.css` file**. The default classes are:
+
+- `.mountable-loading-container` - Container element
+- `.mountable-loading-spinner` - Spinner element
+- `.mountable-loading-text` - Text element
+
+**Required CSS in your `styles.css`:**
+
+```css
+.mountable-loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  min-height: 100px;
+}
+
+@keyframes mountable-spin {
+  0% { transform: rotate(0); }
+  100% { transform: rotate(360deg); }
+}
+
+.mountable-loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--background-modifier-border);
+  border-top: 2px solid var(--interactive-accent);
+  border-radius: 50%;
+  animation: mountable-spin 1s linear infinite;
+  margin: 0 auto 8px;
+}
+
+.mountable-loading-text {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+```
+
+**Using Custom Class Names:**
+
+You can override the default class names if you prefer your own styling:
+
+```typescript
+this.showLoading(this.containerEl, "Loading…", {
+  container: "my-plugin-loading",
+  spinner: "my-plugin-spinner",
+  text: "my-plugin-loading-text"
+});
+```
+
+Then style these custom classes in your `styles.css` accordingly.
+
 ## API Reference
 
 ### Core Classes

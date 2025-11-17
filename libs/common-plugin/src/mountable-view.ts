@@ -23,25 +23,81 @@ export function MountableView<TBase extends AbstractCtor<ItemView>>(Base: TBase)
 			this.#subs.push(sub);
 		}
 
-		showLoading(container: HTMLElement, text = "Loading…"): void {
-			this.hideLoading();
-			this.#loadingEl = container.createDiv("watchdog-loading");
-			this.#loadingEl.addClass("watchdog-loading-container");
-			this.#loadingEl.createDiv("watchdog-loading-spinner");
-			const t = this.#loadingEl.createDiv("watchdog-loading-text");
-			t.textContent = text;
-
-			if (!document.querySelector("#watchdog-loading-styles")) {
-				const style = document.createElement("style");
-				style.id = "watchdog-loading-styles";
-				style.textContent = `
-          @keyframes spin { 0%{transform:rotate(0)} 100%{transform:rotate(360deg)} }
-          .watchdog-loading-container{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;min-height:100px}
-          .watchdog-loading-spinner{width:20px;height:20px;border:2px solid var(--background-modifier-border);border-top:2px solid var(--interactive-accent);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 8px}
-          .watchdog-loading-text{text-align:center;color:var(--text-muted);font-size:.9em}
-        `;
-				document.head.appendChild(style);
+		/**
+		 * Shows a loading indicator in the specified container.
+		 *
+		 * **Styling Requirements:**
+		 * Inheritors must provide CSS styles in their plugin's `styles.css` file for the following classes:
+		 *
+		 * - `.mountable-loading-container` - Container element (flex layout recommended)
+		 * - `.mountable-loading-spinner` - Spinner element (animation recommended)
+		 * - `.mountable-loading-text` - Text element
+		 *
+		 * **Example CSS:**
+		 * ```css
+		 * .mountable-loading-container {
+		 *   display: flex;
+		 *   flex-direction: column;
+		 *   align-items: center;
+		 *   justify-content: center;
+		 *   padding: 2rem;
+		 *   min-height: 100px;
+		 * }
+		 *
+		 * @keyframes mountable-spin {
+		 *   0% { transform: rotate(0); }
+		 *   100% { transform: rotate(360deg); }
+		 * }
+		 *
+		 * .mountable-loading-spinner {
+		 *   width: 20px;
+		 *   height: 20px;
+		 *   border: 2px solid var(--background-modifier-border);
+		 *   border-top: 2px solid var(--interactive-accent);
+		 *   border-radius: 50%;
+		 *   animation: mountable-spin 1s linear infinite;
+		 *   margin: 0 auto 8px;
+		 * }
+		 *
+		 * .mountable-loading-text {
+		 *   text-align: center;
+		 *   color: var(--text-muted);
+		 *   font-size: 0.9em;
+		 * }
+		 * ```
+		 *
+		 * **Custom Class Names:**
+		 * You can override the default class names by passing custom classes:
+		 * ```typescript
+		 * this.showLoading(container, "Loading…", {
+		 *   container: "my-custom-loading",
+		 *   spinner: "my-custom-spinner",
+		 *   text: "my-custom-text"
+		 * });
+		 * ```
+		 *
+		 * @param container - The container element where the loading indicator will be displayed
+		 * @param text - The loading text to display (default: "Loading…")
+		 * @param classes - Optional custom CSS class names to use instead of defaults
+		 */
+		showLoading(
+			container: HTMLElement,
+			text = "Loading…",
+			classes?: {
+				container?: string;
+				spinner?: string;
+				text?: string;
 			}
+		): void {
+			this.hideLoading();
+			const containerClass = classes?.container ?? "mountable-loading-container";
+			const spinnerClass = classes?.spinner ?? "mountable-loading-spinner";
+			const textClass = classes?.text ?? "mountable-loading-text";
+
+			this.#loadingEl = container.createDiv(containerClass);
+			this.#loadingEl.createDiv(spinnerClass);
+			const t = this.#loadingEl.createDiv(textClass);
+			t.textContent = text;
 		}
 
 		hideLoading(): void {
