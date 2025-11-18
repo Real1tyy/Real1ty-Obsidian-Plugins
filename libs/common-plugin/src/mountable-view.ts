@@ -2,15 +2,10 @@ import type { ItemView } from "obsidian";
 
 type AbstractCtor<T = Record<string, never>> = abstract new (...args: any[]) => T;
 
-export interface Subscription {
-	unsubscribe(): void;
-}
-
 export function MountableView<TBase extends AbstractCtor<ItemView>>(Base: TBase, prefix?: string) {
 	abstract class Mountable extends Base {
 		// use ECMAScript private fields to avoid TS4094
 		#mounted = false;
-		#subs: Subscription[] = [];
 		#resizeObserver: ResizeObserver | null = null;
 		#resizeTimeout: ReturnType<typeof setTimeout> | null = null;
 		#loadingEl: HTMLElement | null = null;
@@ -21,13 +16,8 @@ export function MountableView<TBase extends AbstractCtor<ItemView>>(Base: TBase,
 			this.#classPrefix = prefix ? `${prefix}-mountable` : "mountable";
 		}
 
-		// subclasses must implement these
 		abstract mount(): Promise<void>;
 		abstract unmount(): Promise<void>;
-
-		addSub(sub: Subscription): void {
-			this.#subs.push(sub);
-		}
 
 		/**
 		 * Shows a loading indicator in the specified container.
@@ -138,23 +128,18 @@ export function MountableView<TBase extends AbstractCtor<ItemView>>(Base: TBase,
 			});
 		}
 
-		createSubscription(cleanup: () => void): Subscription {
-			return { unsubscribe: cleanup };
-		}
-
 		addEventListenerSub<K extends keyof HTMLElementEventMap>(
 			el: HTMLElement,
 			type: K,
 			listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => any,
 			options?: boolean | AddEventListenerOptions
 		): void {
-			el.addEventListener(type, listener, options);
-			this.addSub(this.createSubscription(() => el.removeEventListener(type, listener, options)));
+			this.registerDomEvent(el, type, listener, options);
 		}
 
 		addWorkspaceEventSub(eventName: string, callback: (...args: any[]) => void): void {
 			const ref = this.app.workspace.on(eventName as any, callback);
-			this.addSub(this.createSubscription(() => this.app.workspace.offref(ref)));
+			this.registerEvent(ref);
 		}
 
 		async onOpen(): Promise<void> {
@@ -172,12 +157,6 @@ export function MountableView<TBase extends AbstractCtor<ItemView>>(Base: TBase,
 			try {
 				await this.unmount();
 			} finally {
-				for (const s of this.#subs) {
-					try {
-						s.unsubscribe();
-					} catch {}
-				}
-				this.#subs = [];
 				if (this.#resizeTimeout) {
 					clearTimeout(this.#resizeTimeout);
 					this.#resizeTimeout = null;
