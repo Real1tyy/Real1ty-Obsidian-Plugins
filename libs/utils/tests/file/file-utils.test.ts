@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
 import type { App } from "obsidian";
+import { describe, expect, it, vi } from "vitest";
 import {
 	backupFrontmatter,
 	extractContentAfterFrontmatter,
