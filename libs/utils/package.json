@@ -1,6 +1,6 @@
 {
 	"name": "@real1ty-obsidian-plugins/utils",
-	"version": "2.10.0",
+	"version": "2.11.0",
 	"description": "Shared utilities for Obsidian plugins",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -61,6 +61,7 @@
 		"vitest": "^2.0.5"
 	},
 	"dependencies": {
+		"colord": "^2.9.3",
 		"gray-matter": "^4.0.3",
 		"luxon": "^3.7.2",
 		"obsidian": "^1.8.7",
