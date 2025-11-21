@@ -548,16 +548,98 @@ export function findRootNodesInFolder(app: App, folderPath: string): string[] {
 }
 
 // ============================================================================
-// Legacy Utility Functions (kept for backwards compatibility)
+// Filename Sanitization
 // ============================================================================
 
-export const sanitizeForFilename = (input: string): string => {
-	return input
-		.replace(/[<>:"/\\|?*]/g, "") // Remove invalid filename characters
-		.replace(/\s+/g, "-") // Replace spaces with hyphens
-		.replace(/-+/g, "-") // Replace multiple hyphens with single
-		.replace(/^-|-$/g, "") // Remove leading/trailing hyphens
-		.toLowerCase();
+export interface SanitizeFilenameOptions {
+	/**
+	 * Style of sanitization to apply.
+	 * - "kebab": Convert to lowercase, replace spaces with hyphens (default, backwards compatible)
+	 * - "preserve": Preserve spaces and case, only remove invalid characters
+	 */
+	style?: "kebab" | "preserve";
+}
+
+/**
+ * Sanitizes a string for use as a filename.
+ * Defaults to kebab-case style for backwards compatibility.
+ *
+ * @param input - String to sanitize
+ * @param options - Sanitization options
+ * @returns Sanitized filename string
+ *
+ * @example
+ * // Default kebab-case style (backwards compatible)
+ * sanitizeForFilename("My File Name") // "my-file-name"
+ *
+ * // Preserve spaces and case
+ * sanitizeForFilename("My File Name", { style: "preserve" }) // "My File Name"
+ */
+export const sanitizeForFilename = (
+	input: string,
+	options: SanitizeFilenameOptions = {}
+): string => {
+	const { style = "kebab" } = options;
+
+	if (style === "preserve") {
+		return sanitizeFilenamePreserveSpaces(input);
+	}
+
+	// Default: kebab-case style (legacy behavior)
+	return sanitizeFilenameKebabCase(input);
+};
+
+/**
+ * Sanitizes filename using kebab-case style.
+ * - Removes invalid characters
+ * - Converts to lowercase
+ * - Replaces spaces with hyphens
+ *
+ * Best for: CLI tools, URLs, slugs, technical files
+ *
+ * @example
+ * sanitizeFilenameKebabCase("My File Name") // "my-file-name"
+ * sanitizeFilenameKebabCase("Travel Around The World") // "travel-around-the-world"
+ */
+export const sanitizeFilenameKebabCase = (input: string): string => {
+	return (
+		input
+			// Remove invalid filename characters
+			.replace(/[<>:"/\\|?*]/g, "")
+			// Replace spaces with hyphens
+			.replace(/\s+/g, "-")
+			// Replace multiple hyphens with single
+			.replace(/-+/g, "-")
+			// Remove leading/trailing hyphens
+			.replace(/^-|-$/g, "")
+			// Convert to lowercase
+			.toLowerCase()
+	);
+};
+
+/**
+ * Sanitizes filename while preserving spaces and case.
+ * - Removes invalid characters only
+ * - Preserves spaces and original casing
+ * - Removes trailing dots (Windows compatibility)
+ *
+ * Best for: Note titles, human-readable filenames, Obsidian notes
+ *
+ * @example
+ * sanitizeFilenamePreserveSpaces("My File Name") // "My File Name"
+ * sanitizeFilenamePreserveSpaces("Travel Around The World") // "Travel Around The World"
+ * sanitizeFilenamePreserveSpaces("File<Invalid>Chars") // "FileInvalidChars"
+ */
+export const sanitizeFilenamePreserveSpaces = (input: string): string => {
+	return (
+		input
+			// Remove invalid filename characters (cross-platform compatibility)
+			.replace(/[<>:"/\\|?*]/g, "")
+			// Remove trailing dots (invalid on Windows)
+			.replace(/\.+$/g, "")
+			// Remove leading/trailing whitespace
+			.trim()
+	);
 };
 
 export const getFilenameFromPath = (filePath: string): string => {
