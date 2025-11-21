@@ -1,6 +1,6 @@
 {
 	"name": "@real1ty-obsidian-plugins/utils",
-	"version": "2.8.1",
+	"version": "2.9.0",
 	"description": "Shared utilities for Obsidian plugins",
 	"type": "module",
 	"main": "./dist/index.js",
