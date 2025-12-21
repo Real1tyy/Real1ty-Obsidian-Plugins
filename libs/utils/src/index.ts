@@ -2,6 +2,8 @@
 
 // Async utilities
 export * from "./async";
+// Components
+export * from "./components";
 // Core utilities
 export * from "./core";
 
