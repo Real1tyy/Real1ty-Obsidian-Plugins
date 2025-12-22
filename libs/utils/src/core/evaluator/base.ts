@@ -40,8 +40,17 @@ export abstract class BaseEvaluator<TRule extends BaseRule, TSettings> {
 		}
 
 		try {
-			if (this.propertyMapping.size === 0) {
-				this.propertyMapping = buildPropertyMapping(Object.keys(frontmatter));
+			// Progressively build property mapping as we encounter new properties
+			const currentKeys = new Set(Object.keys(frontmatter));
+			const existingKeys = new Set(this.propertyMapping.keys());
+			const newKeys = [...currentKeys].filter((key) => !existingKeys.has(key));
+
+			// If new properties are found, rebuild the mapping and invalidate compiled functions
+			if (newKeys.length > 0) {
+				const allKeys = new Set([...existingKeys, ...currentKeys]);
+				this.propertyMapping = buildPropertyMapping(Array.from(allKeys));
+				// Clear compiled functions since property mapping changed
+				this.compiledFunctions.clear();
 			}
 
 			let compiledFunc = this.compiledFunctions.get(rule.id);
@@ -55,7 +64,10 @@ export abstract class BaseEvaluator<TRule extends BaseRule, TSettings> {
 				this.compiledFunctions.set(rule.id, compiledFunc);
 			}
 
-			const values = Array.from(this.propertyMapping.keys()).map((key) => frontmatter[key]);
+			// Use undefined for missing properties instead of letting them be undefined implicitly
+			const values = Array.from(this.propertyMapping.keys()).map(
+				(key) => frontmatter[key] ?? undefined
+			);
 			const result = compiledFunc(...values);
 
 			return result === true;
