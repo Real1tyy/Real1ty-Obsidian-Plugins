@@ -4,6 +4,7 @@ export * from "./file-operations";
 export * from "./file-utils";
 export * from "./frontmatter";
 export * from "./frontmatter-diff";
+export * from "./frontmatter-propagation";
 export * from "./link-parser";
 export * from "./property-utils";
 export * from "./templater";
