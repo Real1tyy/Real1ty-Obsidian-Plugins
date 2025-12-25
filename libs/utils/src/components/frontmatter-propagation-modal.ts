@@ -9,6 +9,7 @@ export interface FrontmatterPropagationModalOptions {
 	instanceCount: number;
 	onConfirm: () => void | Promise<void>;
 	onCancel?: () => void | Promise<void>;
+	cssPrefix?: string;
 }
 
 export class FrontmatterPropagationModal extends Modal {
@@ -21,6 +22,7 @@ export class FrontmatterPropagationModal extends Modal {
 
 	onOpen(): void {
 		const { contentEl } = this;
+		const prefix = this.options.cssPrefix ?? "frontmatter-propagation";
 
 		contentEl.empty();
 
@@ -30,48 +32,50 @@ export class FrontmatterPropagationModal extends Modal {
 			text: `The recurring event "${this.options.eventTitle}" has frontmatter changes. Do you want to apply these changes to all ${this.options.instanceCount} physical instances?`,
 		});
 
-		const changesContainer = contentEl.createDiv({ cls: "prisma-frontmatter-changes" });
+		const changesContainer = contentEl.createDiv({ cls: `${prefix}-frontmatter-changes` });
 
 		if (this.options.diff.added.length > 0) {
-			const addedSection = changesContainer.createDiv({ cls: "prisma-changes-section" });
+			const addedSection = changesContainer.createDiv({
+				cls: `${prefix}-frontmatter-changes-section`,
+			});
 			addedSection.createEl("h4", { text: "Added properties:" });
 			const addedList = addedSection.createEl("ul");
 
 			for (const change of this.options.diff.added) {
 				addedList.createEl("li", {
 					text: formatChangeForDisplay(change),
-					cls: "prisma-change-added",
+					cls: `${prefix}-change-added`,
 				});
 			}
 		}
 
 		if (this.options.diff.modified.length > 0) {
-			const modifiedSection = changesContainer.createDiv({ cls: "prisma-changes-section" });
+			const modifiedSection = changesContainer.createDiv({ cls: `${prefix}-changes-section` });
 			modifiedSection.createEl("h4", { text: "Modified properties:" });
 			const modifiedList = modifiedSection.createEl("ul");
 
 			for (const change of this.options.diff.modified) {
 				modifiedList.createEl("li", {
 					text: formatChangeForDisplay(change),
-					cls: "prisma-change-modified",
+					cls: `${prefix}-change-modified`,
 				});
 			}
 		}
 
 		if (this.options.diff.deleted.length > 0) {
-			const deletedSection = changesContainer.createDiv({ cls: "prisma-changes-section" });
+			const deletedSection = changesContainer.createDiv({ cls: `${prefix}-changes-section` });
 			deletedSection.createEl("h4", { text: "Deleted properties:" });
 			const deletedList = deletedSection.createEl("ul");
 
 			for (const change of this.options.diff.deleted) {
 				deletedList.createEl("li", {
 					text: formatChangeForDisplay(change),
-					cls: "prisma-change-deleted",
+					cls: `${prefix}-change-deleted`,
 				});
 			}
 		}
 
-		const buttonContainer = contentEl.createDiv({ cls: "prisma-modal-buttons" });
+		const buttonContainer = contentEl.createDiv({ cls: `${prefix}-modal-buttons` });
 
 		const yesButton = buttonContainer.createEl("button", {
 			text: "Yes, propagate",
