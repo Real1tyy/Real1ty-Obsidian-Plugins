@@ -1,4 +1,4 @@
-import { type App, Notice, normalizePath, type TFile } from "obsidian";
+import { type App, Notice, normalizePath, TFile } from "obsidian";
 
 const TEMPLATER_ID = "templater-obsidian";
 
@@ -11,6 +11,16 @@ type CreateFn = (
 
 interface TemplaterLike {
 	create_new_note_from_template: CreateFn;
+}
+
+export interface FileCreationOptions {
+	title: string;
+	targetDirectory: string;
+	filename?: string;
+	content?: string;
+	frontmatter?: Record<string, unknown>;
+	templatePath?: string;
+	useTemplater?: boolean;
 }
 
 async function waitForTemplater(app: App, timeoutMs = 8000): Promise<TemplaterLike | null> {
@@ -72,4 +82,50 @@ export async function createFromTemplate(
 		new Notice("Error creating file from template. Please ensure the template file is valid.");
 		return null;
 	}
+}
+
+export async function createFileWithTemplate(
+	app: App,
+	options: FileCreationOptions
+): Promise<TFile> {
+	const { title, targetDirectory, filename, content, frontmatter, templatePath, useTemplater } =
+		options;
+
+	const finalFilename = filename || title;
+	const baseName = finalFilename.replace(/\.md$/, "");
+	const filePath = normalizePath(`${targetDirectory}/${baseName}.md`);
+
+	const existingFile = app.vault.getAbstractFileByPath(filePath);
+	if (existingFile instanceof TFile) {
+		return existingFile;
+	}
+
+	if (useTemplater && templatePath && templatePath.trim() !== "" && isTemplaterAvailable(app)) {
+		const templateFile = await createFromTemplate(
+			app,
+			templatePath,
+			targetDirectory,
+			finalFilename
+		);
+
+		if (templateFile) {
+			if (frontmatter && Object.keys(frontmatter).length > 0) {
+				await app.fileManager.processFrontMatter(templateFile, (fm) => {
+					Object.assign(fm, frontmatter);
+				});
+			}
+			return templateFile;
+		}
+	}
+
+	const fileContent = content || "";
+	const file = await app.vault.create(filePath, fileContent);
+
+	if (frontmatter && Object.keys(frontmatter).length > 0) {
+		await app.fileManager.processFrontMatter(file, (fm) => {
+			Object.assign(fm, frontmatter);
+		});
+	}
+
+	return file;
 }
