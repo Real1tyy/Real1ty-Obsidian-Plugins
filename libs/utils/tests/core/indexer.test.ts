@@ -42,7 +42,7 @@ describe("Indexer", () => {
 		} as unknown as App;
 
 		configStore = new BehaviorSubject<IndexerConfig>({
-			directory: "TestFolder",
+			includeFile: (path) => path.startsWith("TestFolder/"),
 			excludedDiffProps: new Set(["mtime"]),
 			scanConcurrency: 5,
 			debounceMs: 10, // Shorter debounce for faster tests
@@ -210,7 +210,7 @@ describe("Indexer", () => {
 	});
 
 	describe("config changes", () => {
-		it("should rescan when directory config changes", async () => {
+		it("should rescan when includeFile config changes", async () => {
 			await indexer.start();
 
 			const mockFile: TFile = {
@@ -228,9 +228,9 @@ describe("Indexer", () => {
 
 			const eventsPromise = lastValueFrom(indexer.events$.pipe(take(1), toArray()));
 
-			// Change directory config
+			// Change includeFile config
 			configStore.next({
-				directory: "NewFolder",
+				includeFile: (path) => path.startsWith("NewFolder/"),
 			});
 
 			const events = await eventsPromise;
@@ -238,15 +238,16 @@ describe("Indexer", () => {
 			expect(events[0].filePath).toBe("NewFolder/note.md");
 		});
 
-		it("should not rescan when non-directory config changes", async () => {
+		it("should not rescan when non-includeFile config changes", async () => {
 			await indexer.start();
 
 			const scanSpy = vi.spyOn(mockVault, "getMarkdownFiles");
 			scanSpy.mockClear();
 
-			// Change non-directory config
+			// Change non-includeFile config (keep same function reference)
+			const originalIncludeFile = configStore.value.includeFile;
 			configStore.next({
-				directory: "TestFolder", // Same directory
+				includeFile: originalIncludeFile, // Same function reference
 				scanConcurrency: 20, // Different concurrency
 			});
 

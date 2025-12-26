@@ -12,7 +12,6 @@ import {
 	type Subscription,
 } from "rxjs";
 import { debounceTime, filter, groupBy, map, mergeMap, switchMap, toArray } from "rxjs/operators";
-import { isFileInConfiguredDirectory } from "../file/file";
 import { compareFrontmatter, type FrontmatterDiff } from "../file/frontmatter-diff";
 
 /**
@@ -25,10 +24,11 @@ export type IndexerFrontmatter = Record<string, unknown>;
  */
 export interface IndexerConfig {
 	/**
-	 * Directory to scan for files (e.g., "Calendar", "Notes")
-	 * If empty string or undefined, scans entire vault
+	 * Function that determines whether a file should be included in the indexer.
+	 * Returns true if the file should be indexed, false otherwise.
+	 * If not provided, all files are included.
 	 */
-	directory?: string;
+	includeFile?: (path: string) => boolean;
 
 	/**
 	 * Properties to exclude when comparing frontmatter diffs
@@ -99,31 +99,16 @@ export class Indexer {
 	public readonly events$: Observable<IndexerEvent>;
 	public readonly indexingComplete$: Observable<boolean>;
 
-	constructor(_app: App, configStore: BehaviorSubject<IndexerConfig>) {
-		this.vault = _app.vault;
-		this.metadataCache = _app.metadataCache;
+	constructor(app: App, configStore: BehaviorSubject<IndexerConfig>) {
+		this.vault = app.vault;
+		this.metadataCache = app.metadataCache;
+		this.config = this.normalizeConfig(configStore.value);
 
-		// Set defaults
-		this.config = {
-			directory: configStore.value.directory || "",
-			excludedDiffProps: configStore.value.excludedDiffProps || new Set(),
-			scanConcurrency: configStore.value.scanConcurrency || 10,
-			debounceMs: configStore.value.debounceMs || 100,
-		};
-
-		// Subscribe to config changes
 		this.configSubscription = configStore.subscribe((newConfig) => {
-			const directoryChanged = this.config.directory !== (newConfig.directory || "");
+			const includeFileChanged = this.config.includeFile !== this.normalizeConfig(newConfig).includeFile;
+			this.config = this.normalizeConfig(newConfig);
 
-			this.config = {
-				directory: newConfig.directory || "",
-				excludedDiffProps: newConfig.excludedDiffProps || new Set(),
-				scanConcurrency: newConfig.scanConcurrency || 10,
-				debounceMs: newConfig.debounceMs || 100,
-			};
-
-			// Rescan if directory changed
-			if (directoryChanged) {
+			if (includeFileChanged) {
 				this.indexingCompleteSubject.next(false);
 				void this.scanAllFiles();
 			}
@@ -133,9 +118,15 @@ export class Indexer {
 		this.indexingComplete$ = this.indexingCompleteSubject.asObservable();
 	}
 
-	/**
-	 * Start the indexer and perform initial scan
-	 */
+	private normalizeConfig(config: IndexerConfig): Required<IndexerConfig> {
+		return {
+			includeFile: config.includeFile || (() => true),
+			excludedDiffProps: config.excludedDiffProps || new Set(),
+			scanConcurrency: config.scanConcurrency || 10,
+			debounceMs: config.debounceMs || 100,
+		};
+	}
+
 	async start(): Promise<void> {
 		this.indexingCompleteSubject.next(false);
 
@@ -148,9 +139,6 @@ export class Indexer {
 		await this.scanAllFiles();
 	}
 
-	/**
-	 * Stop the indexer and clean up subscriptions
-	 */
 	stop(): void {
 		this.fileSub?.unsubscribe();
 		this.fileSub = null;
@@ -159,9 +147,6 @@ export class Indexer {
 		this.indexingCompleteSubject.complete();
 	}
 
-	/**
-	 * Clear cache and rescan all files
-	 */
 	resync(): void {
 		this.frontmatterCache.clear();
 		this.indexingCompleteSubject.next(false);
@@ -173,7 +158,7 @@ export class Indexer {
 	 */
 	private async scanAllFiles(): Promise<void> {
 		const allFiles = this.vault.getMarkdownFiles();
-		const relevantFiles = allFiles.filter((file) => this.isRelevantFile(file));
+		const relevantFiles = allFiles.filter((file) => this.config.includeFile(file.path));
 
 		const events$ = from(relevantFiles).pipe(
 			mergeMap(async (file) => {
@@ -234,9 +219,6 @@ export class Indexer {
 		).pipe(map(([file]) => file));
 	}
 
-	/**
-	 * Type guard to check if file is a markdown file
-	 */
 	private static isMarkdownFile(f: TAbstractFile): f is TFile {
 		return f instanceof TFile && f.extension === "md";
 	}
@@ -248,7 +230,7 @@ export class Indexer {
 		return (source: Observable<T>) =>
 			source.pipe(
 				filter((f: TAbstractFile): f is TFile => Indexer.isMarkdownFile(f)),
-				filter((f) => this.isRelevantFile(f))
+				filter((f) => this.config.includeFile(f.path))
 			);
 	}
 
@@ -287,7 +269,7 @@ export class Indexer {
 
 		const renamedIntents$ = renamed$.pipe(
 			map(([f, oldPath]) => [f, oldPath] as const),
-			filter(([f]) => Indexer.isMarkdownFile(f) && this.isRelevantFile(f)),
+			filter(([f]) => Indexer.isMarkdownFile(f) && this.config.includeFile(f.path)),
 			mergeMap(([f, oldPath]) => [
 				{ kind: "deleted", path: oldPath } as FileIntent,
 				{ kind: "changed", file: f, path: f.path, oldPath } as FileIntent,
@@ -342,12 +324,5 @@ export class Indexer {
 		this.frontmatterCache.set(file.path, { ...frontmatter });
 
 		return event;
-	}
-
-	/**
-	 * Check if file is in the configured directory
-	 */
-	private isRelevantFile(file: TFile): boolean {
-		return isFileInConfiguredDirectory(file.path, this.config.directory);
 	}
 }
