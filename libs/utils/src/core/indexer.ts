@@ -105,7 +105,8 @@ export class Indexer {
 		this.config = this.normalizeConfig(configStore.value);
 
 		this.configSubscription = configStore.subscribe((newConfig) => {
-			const includeFileChanged = this.config.includeFile !== this.normalizeConfig(newConfig).includeFile;
+			const includeFileChanged =
+				this.config.includeFile !== this.normalizeConfig(newConfig).includeFile;
 			this.config = this.normalizeConfig(newConfig);
 
 			if (includeFileChanged) {
