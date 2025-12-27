@@ -8,3 +8,4 @@ export * from "./frontmatter-propagation";
 export * from "./link-parser";
 export * from "./property-utils";
 export * from "./templater";
+export * from "./templater-service";
