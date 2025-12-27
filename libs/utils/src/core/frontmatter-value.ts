@@ -150,12 +150,21 @@ export function parseWikiLinkWithDisplay(
 // Property Normalization
 // ============================================================================
 
+export interface NormalizePropertyOptions {
+	/**
+	 * Whether to log warnings for unexpected types.
+	 * Default: false (silent mode)
+	 */
+	logWarnings?: boolean;
+}
+
 /**
  * Normalizes frontmatter property values to an array of strings.
  * Handles various YAML formats and ensures consistent output.
  *
  * @param value - The raw frontmatter property value (can be any type)
  * @param propertyName - Optional property name for logging purposes
+ * @param options - Optional configuration for normalization behavior
  * @returns Array of strings, or empty array if value is invalid/unexpected
  *
  * @example
@@ -165,8 +174,13 @@ export function parseWikiLinkWithDisplay(
  * // Array of strings
  * normalizeProperty(["[[link1]]", "[[link2]]"]) // ["[[link1]]", "[[link2]]"]
  *
- * // Mixed array (filters out non-strings)
+ * // Mixed array (filters out non-strings silently)
  * normalizeProperty(["[[link]]", 42, null]) // ["[[link]]"]
+ *
+ * // Mixed array with warnings enabled
+ * normalizeProperty(["[[link]]", 42], "myProp", { logWarnings: true })
+ * // Logs: Property "myProp" contains non-string value (number), filtering it out: 42
+ * // Returns: ["[[link]]"]
  *
  * // Invalid types
  * normalizeProperty(null) // []
@@ -174,7 +188,13 @@ export function parseWikiLinkWithDisplay(
  * normalizeProperty(42) // []
  * normalizeProperty({}) // []
  */
-export function normalizeProperty(value: unknown, propertyName?: string): string[] {
+export function normalizeProperty(
+	value: unknown,
+	propertyName?: string,
+	options?: NormalizePropertyOptions
+): string[] {
+	const { logWarnings = false } = options ?? {};
+
 	// Handle undefined and null
 	if (value === undefined || value === null) {
 		return [];
@@ -202,8 +222,13 @@ export function normalizeProperty(value: unknown, propertyName?: string): string
 				return true;
 			}
 
-			// Log warning for non-string items
-			if (propertyName) {
+			// null and undefined are expected in YAML arrays, don't warn
+			if (item === null || item === undefined) {
+				return false;
+			}
+
+			// Log warning for truly unexpected types (numbers, booleans, objects, etc.)
+			if (logWarnings && propertyName) {
 				console.warn(
 					`Property "${propertyName}" contains non-string value (${typeof item}), filtering it out:`,
 					item
@@ -219,7 +244,7 @@ export function normalizeProperty(value: unknown, propertyName?: string): string
 	}
 
 	// Handle unexpected types (numbers, booleans, objects, etc.)
-	if (propertyName) {
+	if (logWarnings && propertyName) {
 		console.warn(
 			`Property "${propertyName}" has unexpected type (${typeof value}), returning empty array. Value:`,
 			value
@@ -235,6 +260,7 @@ export function normalizeProperty(value: unknown, propertyName?: string): string
  *
  * @param frontmatter - The frontmatter object
  * @param propertyNames - Array of property names to normalize
+ * @param options - Optional configuration for normalization behavior
  * @returns Map of property names to normalized string arrays
  *
  * @example
@@ -253,13 +279,14 @@ export function normalizeProperty(value: unknown, propertyName?: string): string
  */
 export function normalizeProperties(
 	frontmatter: Record<string, unknown>,
-	propertyNames: string[]
+	propertyNames: string[],
+	options?: NormalizePropertyOptions
 ): Map<string, string[]> {
 	const result = new Map<string, string[]>();
 
 	for (const propName of propertyNames) {
 		const value = frontmatter[propName];
-		result.set(propName, normalizeProperty(value, propName));
+		result.set(propName, normalizeProperty(value, propName, options));
 	}
 
 	return result;

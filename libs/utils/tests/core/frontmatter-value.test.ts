@@ -362,42 +362,26 @@ describe("normalizeProperty", () => {
 		});
 
 		it("should return empty array for numbers", () => {
-			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 			expect(normalizeProperty(42, "testProp")).toEqual([]);
-			expect(consoleWarnSpy).toHaveBeenCalledWith(
-				expect.stringContaining('Property "testProp" has unexpected type'),
-				42
-			);
 		});
 
 		it("should return empty array for booleans", () => {
-			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 			expect(normalizeProperty(true, "testProp")).toEqual([]);
 			expect(normalizeProperty(false, "testProp")).toEqual([]);
-			expect(consoleWarnSpy).toHaveBeenCalledTimes(2);
 		});
 
 		it("should return empty array for objects", () => {
-			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 			expect(normalizeProperty({ key: "value" }, "testProp")).toEqual([]);
-			expect(consoleWarnSpy).toHaveBeenCalledWith(
-				expect.stringContaining('Property "testProp" has unexpected type'),
-				{ key: "value" }
-			);
 		});
 
 		it("should return empty array for functions", () => {
-			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 			const fn = () => {};
 			expect(normalizeProperty(fn, "testProp")).toEqual([]);
-			expect(consoleWarnSpy).toHaveBeenCalled();
 		});
 
 		it("should return empty array for symbols", () => {
-			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 			const sym = Symbol("test");
 			expect(normalizeProperty(sym, "testProp")).toEqual([]);
-			expect(consoleWarnSpy).toHaveBeenCalled();
 		});
 	});
 
@@ -410,12 +394,47 @@ describe("normalizeProperty", () => {
 			expect(normalizeProperty(["[[link1]]", "[[link2]]"])).toEqual(["[[link1]]", "[[link2]]"]);
 		});
 
-		it("should filter out non-string values from array", () => {
+		it("should filter out non-string values from array silently by default", () => {
 			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 			expect(normalizeProperty(["[[link]]", 42, null, undefined, "[[link2]]"], "testProp")).toEqual(
 				["[[link]]", "[[link2]]"]
 			);
-			expect(consoleWarnSpy).toHaveBeenCalledTimes(3); // 42, null, undefined
+			// Should NOT log warnings by default
+			expect(consoleWarnSpy).not.toHaveBeenCalled();
+		});
+
+		it("should filter out null and undefined silently even with logWarnings enabled", () => {
+			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+			expect(
+				normalizeProperty(["[[link]]", null, undefined, "[[link2]]"], "testProp", {
+					logWarnings: true,
+				})
+			).toEqual(["[[link]]", "[[link2]]"]);
+			// Should NOT log warnings for null/undefined (expected in YAML)
+			expect(consoleWarnSpy).not.toHaveBeenCalled();
+		});
+
+		it("should log warnings for truly unexpected types when logWarnings is enabled", () => {
+			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+			expect(
+				normalizeProperty(["[[link]]", 42, true, { key: "value" }], "testProp", {
+					logWarnings: true,
+				})
+			).toEqual(["[[link]]"]);
+			// Should log warnings for number, boolean, object
+			expect(consoleWarnSpy).toHaveBeenCalledTimes(3);
+			expect(consoleWarnSpy).toHaveBeenCalledWith(
+				expect.stringContaining('Property "testProp" contains non-string value (number)'),
+				42
+			);
+			expect(consoleWarnSpy).toHaveBeenCalledWith(
+				expect.stringContaining('Property "testProp" contains non-string value (boolean)'),
+				true
+			);
+			expect(consoleWarnSpy).toHaveBeenCalledWith(
+				expect.stringContaining('Property "testProp" contains non-string value (object)'),
+				{ key: "value" }
+			);
 		});
 
 		it("should filter out empty strings from array", () => {
@@ -429,12 +448,24 @@ describe("normalizeProperty", () => {
 		it("should handle array with only invalid values", () => {
 			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 			expect(normalizeProperty([42, null, undefined, true], "testProp")).toEqual([]);
-			expect(consoleWarnSpy).toHaveBeenCalledTimes(4);
+			// Should NOT log warnings by default
+			expect(consoleWarnSpy).not.toHaveBeenCalled();
+		});
+
+		it("should handle array with only null/undefined", () => {
+			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+			expect(normalizeProperty([null, undefined, null], "testProp", { logWarnings: true })).toEqual(
+				[]
+			);
+			// Should NOT log warnings for null/undefined even with logWarnings enabled
+			expect(consoleWarnSpy).not.toHaveBeenCalled();
 		});
 
 		it("should handle nested arrays", () => {
 			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-			expect(normalizeProperty(["[[link]]", ["nested"]], "testProp")).toEqual(["[[link]]"]);
+			expect(
+				normalizeProperty(["[[link]]", ["nested"]], "testProp", { logWarnings: true })
+			).toEqual(["[[link]]"]);
 			expect(consoleWarnSpy).toHaveBeenCalledWith(
 				expect.stringContaining('Property "testProp" contains non-string value'),
 				["nested"]
@@ -443,7 +474,9 @@ describe("normalizeProperty", () => {
 
 		it("should handle array with objects", () => {
 			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-			expect(normalizeProperty(["[[link]]", { key: "value" }], "testProp")).toEqual(["[[link]]"]);
+			expect(
+				normalizeProperty(["[[link]]", { key: "value" }], "testProp", { logWarnings: true })
+			).toEqual(["[[link]]"]);
 			expect(consoleWarnSpy).toHaveBeenCalled();
 		});
 	});
@@ -503,32 +536,42 @@ describe("normalizeProperty", () => {
 	});
 
 	describe("Warning logging", () => {
-		it("should log warning when propertyName is provided for invalid type", () => {
+		it("should NOT log warnings by default", () => {
 			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 			normalizeProperty(42, "MyProperty");
+			expect(consoleWarnSpy).not.toHaveBeenCalled();
+		});
+
+		it("should log warning when logWarnings is enabled and propertyName is provided", () => {
+			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+			normalizeProperty(42, "MyProperty", { logWarnings: true });
 			expect(consoleWarnSpy).toHaveBeenCalledWith(
 				expect.stringContaining('Property "MyProperty" has unexpected type'),
 				42
 			);
 		});
 
-		it("should not log warning when propertyName is not provided", () => {
+		it("should not log warning when logWarnings is enabled but propertyName is not provided", () => {
 			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-			normalizeProperty(42);
+			normalizeProperty(42, undefined, { logWarnings: true });
 			expect(consoleWarnSpy).not.toHaveBeenCalled();
 		});
 
-		it("should log warning for non-string array items", () => {
+		it("should log warning for truly unexpected array items when logWarnings is enabled", () => {
 			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-			normalizeProperty(["[[link]]", 42, null], "MyProperty");
+			normalizeProperty(["[[link]]", 42, null], "MyProperty", { logWarnings: true });
+			// Should log for 42 (number) but NOT for null (expected)
+			expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
 			expect(consoleWarnSpy).toHaveBeenCalledWith(
-				expect.stringContaining('Property "MyProperty" contains non-string value'),
+				expect.stringContaining('Property "MyProperty" contains non-string value (number)'),
 				42
 			);
-			expect(consoleWarnSpy).toHaveBeenCalledWith(
-				expect.stringContaining('Property "MyProperty" contains non-string value'),
-				null
-			);
+		});
+
+		it("should handle logWarnings: false explicitly", () => {
+			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+			normalizeProperty(42, "MyProperty", { logWarnings: false });
+			expect(consoleWarnSpy).not.toHaveBeenCalled();
 		});
 	});
 
@@ -607,7 +650,6 @@ describe("normalizeProperty", () => {
 						)
 					),
 					(mixedArray) => {
-						vi.spyOn(console, "warn").mockImplementation(() => {});
 						const result = normalizeProperty(mixedArray);
 						const expectedStrings = mixedArray.filter(
 							(item) => typeof item === "string" && item.trim() !== ""
@@ -641,7 +683,6 @@ describe("normalizeProperty", () => {
 						)
 					),
 					(complexArray) => {
-						vi.spyOn(console, "warn").mockImplementation(() => {});
 						const result = normalizeProperty(complexArray);
 						// Should always return an array without throwing
 						expect(Array.isArray(result)).toBe(true);
@@ -680,34 +721,42 @@ describe("normalizeProperty", () => {
 	});
 
 	describe("Edge cases", () => {
-		it("should handle BigInt", () => {
+		it("should handle BigInt without logging by default", () => {
 			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 			expect(normalizeProperty(BigInt(9007199254740991), "testProp")).toEqual([]);
+			expect(consoleWarnSpy).not.toHaveBeenCalled();
+		});
+
+		it("should handle BigInt with logging when enabled", () => {
+			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+			expect(
+				normalizeProperty(BigInt(9007199254740991), "testProp", { logWarnings: true })
+			).toEqual([]);
 			expect(consoleWarnSpy).toHaveBeenCalled();
 		});
 
 		it("should handle Date objects", () => {
 			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 			expect(normalizeProperty(new Date(), "testProp")).toEqual([]);
-			expect(consoleWarnSpy).toHaveBeenCalled();
+			expect(consoleWarnSpy).not.toHaveBeenCalled();
 		});
 
 		it("should handle RegExp", () => {
 			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 			expect(normalizeProperty(/regex/, "testProp")).toEqual([]);
-			expect(consoleWarnSpy).toHaveBeenCalled();
+			expect(consoleWarnSpy).not.toHaveBeenCalled();
 		});
 
 		it("should handle Map", () => {
 			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 			expect(normalizeProperty(new Map(), "testProp")).toEqual([]);
-			expect(consoleWarnSpy).toHaveBeenCalled();
+			expect(consoleWarnSpy).not.toHaveBeenCalled();
 		});
 
 		it("should handle Set", () => {
 			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 			expect(normalizeProperty(new Set(), "testProp")).toEqual([]);
-			expect(consoleWarnSpy).toHaveBeenCalled();
+			expect(consoleWarnSpy).not.toHaveBeenCalled();
 		});
 
 		it("should handle array with circular references", () => {
@@ -715,7 +764,7 @@ describe("normalizeProperty", () => {
 			const circular: any[] = ["[[link]]"];
 			circular.push(circular);
 			expect(normalizeProperty(circular, "testProp")).toEqual(["[[link]]"]);
-			expect(consoleWarnSpy).toHaveBeenCalled();
+			expect(consoleWarnSpy).not.toHaveBeenCalled();
 		});
 
 		it("should handle very long strings", () => {
@@ -735,6 +784,86 @@ describe("normalizeProperty", () => {
 			expect(
 				normalizeProperty(["[[file: with colon]]", "[[file | with pipe]]", "[[file # with hash]]"])
 			).toEqual(["[[file: with colon]]", "[[file | with pipe]]", "[[file # with hash]]"]);
+		});
+	});
+
+	describe("Real-world Obsidian frontmatter scenarios", () => {
+		it("should handle the reported issue: array with null values", () => {
+			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+			// This is the exact scenario from the bug report
+			const parent = normalizeProperty(["[[Nexus Properties/S Parent|S Parent]]"], "Parent", {
+				logWarnings: true,
+			});
+			const related = normalizeProperty(
+				[
+					"[[Nexus Properties/S Related|S Related]]",
+					"[[Nexus Properties/S Related 2|S Related 2]]",
+				],
+				"Related",
+				{ logWarnings: true }
+			);
+			const child = normalizeProperty(["[[Nexus Properties/S Child|S Child]]"], "Child", {
+				logWarnings: true,
+			});
+
+			expect(parent).toEqual(["[[Nexus Properties/S Parent|S Parent]]"]);
+			expect(related).toEqual([
+				"[[Nexus Properties/S Related|S Related]]",
+				"[[Nexus Properties/S Related 2|S Related 2]]",
+			]);
+			expect(child).toEqual(["[[Nexus Properties/S Child|S Child]]"]);
+
+			// Should NOT have logged any warnings for valid data
+			expect(consoleWarnSpy).not.toHaveBeenCalled();
+		});
+
+		it("should handle mixed valid and null values silently", () => {
+			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+			const result = normalizeProperty(
+				["[[Valid Link]]", null, "[[Another Link]]", undefined],
+				"TestProp",
+				{ logWarnings: true }
+			);
+
+			expect(result).toEqual(["[[Valid Link]]", "[[Another Link]]"]);
+			// Should NOT log warnings for null/undefined
+			expect(consoleWarnSpy).not.toHaveBeenCalled();
+		});
+
+		it("should only log warnings for truly problematic values", () => {
+			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+			const result = normalizeProperty(
+				["[[Valid Link]]", null, 42, undefined, true, "[[Another Link]]"],
+				"TestProp",
+				{ logWarnings: true }
+			);
+
+			expect(result).toEqual(["[[Valid Link]]", "[[Another Link]]"]);
+			// Should only log for 42 and true, NOT for null/undefined
+			expect(consoleWarnSpy).toHaveBeenCalledTimes(2);
+			expect(consoleWarnSpy).toHaveBeenCalledWith(
+				expect.stringContaining("non-string value (number)"),
+				42
+			);
+			expect(consoleWarnSpy).toHaveBeenCalledWith(
+				expect.stringContaining("non-string value (boolean)"),
+				true
+			);
+		});
+
+		it("should handle empty frontmatter properties gracefully", () => {
+			const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+			expect(normalizeProperty(null, "EmptyProp", { logWarnings: true })).toEqual([]);
+			expect(normalizeProperty(undefined, "EmptyProp", { logWarnings: true })).toEqual([]);
+			expect(normalizeProperty("", "EmptyProp", { logWarnings: true })).toEqual([]);
+			expect(normalizeProperty([], "EmptyProp", { logWarnings: true })).toEqual([]);
+
+			// Should NOT log warnings for empty values
+			expect(consoleWarnSpy).not.toHaveBeenCalled();
 		});
 	});
 });
@@ -813,7 +942,6 @@ describe("normalizeProperties", () => {
 					fc.dictionary(fc.string(), fc.anything()),
 					fc.array(fc.string()),
 					(frontmatter, propNames) => {
-						vi.spyOn(console, "warn").mockImplementation(() => {});
 						const result = normalizeProperties(frontmatter, propNames);
 						for (const value of result.values()) {
 							expect(Array.isArray(value)).toBe(true);
