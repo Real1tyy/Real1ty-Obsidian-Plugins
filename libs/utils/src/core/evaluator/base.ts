@@ -72,6 +72,12 @@ export abstract class BaseEvaluator<TRule extends BaseRule, TSettings> {
 
 			return result === true;
 		} catch (error) {
+			// Suppress ReferenceError logs - these occur when properties don't exist in frontmatter
+			// which is expected behavior (e.g., Status === 'Done' when Status is undefined)
+			if (error instanceof ReferenceError) {
+				return false;
+			}
+			// Log other errors (syntax errors, etc.) as they indicate actual problems
 			console.warn(`Invalid expression (${rule.id}):`, rule.expression, error);
 			return false;
 		}
