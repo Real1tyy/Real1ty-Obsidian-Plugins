@@ -71,13 +71,18 @@ export interface IndexerEvent {
 	source?: FileSource;
 	oldFrontmatter?: IndexerFrontmatter;
 	frontmatterDiff?: FrontmatterDiff;
+	/**
+	 * True if this deletion event is part of a rename operation.
+	 * Only present on "file-deleted" events.
+	 */
+	isRename?: boolean;
 }
 
 type VaultEvent = "create" | "modify" | "delete" | "rename";
 
 type FileIntent =
 	| { kind: "changed"; file: TFile; path: string; oldPath?: string }
-	| { kind: "deleted"; path: string };
+	| { kind: "deleted"; path: string; isRename?: boolean };
 
 /**
  * Generic indexer that listens to Obsidian vault events and emits
@@ -272,7 +277,7 @@ export class Indexer {
 			map(([f, oldPath]) => [f, oldPath] as const),
 			filter(([f]) => Indexer.isMarkdownFile(f) && this.config.includeFile(f.path)),
 			mergeMap(([f, oldPath]) => [
-				{ kind: "deleted", path: oldPath } as FileIntent,
+				{ kind: "deleted", path: oldPath, isRename: true } as FileIntent,
 				{ kind: "changed", file: f, path: f.path, oldPath } as FileIntent,
 			])
 		);
@@ -283,7 +288,11 @@ export class Indexer {
 			switchMap((intent) => {
 				if (intent.kind === "deleted") {
 					this.frontmatterCache.delete(intent.path);
-					return of<IndexerEvent>({ type: "file-deleted", filePath: intent.path });
+					return of<IndexerEvent>({
+						type: "file-deleted",
+						filePath: intent.path,
+						isRename: intent.isRename,
+					});
 				}
 
 				return from(this.buildEvent(intent.file, intent.oldPath)).pipe(
