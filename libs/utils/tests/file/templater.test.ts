@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createFromTemplate, isTemplaterAvailable } from "../../src/file";
 
 // Mock normalizePath from obsidian
@@ -30,12 +30,19 @@ const mockApp = {
 	},
 	vault: {
 		getFileByPath: vi.fn(),
+		getAbstractFileByPath: vi.fn(),
 	},
 	workspace: {
 		onLayoutReady: vi.fn((callback: () => void) => {
 			// Immediately call the callback for tests
 			callback();
 		}),
+	},
+	metadataCache: {
+		getFileCache: vi.fn(),
+	},
+	fileManager: {
+		processFrontMatter: vi.fn(),
 	},
 } as any;
 
@@ -45,6 +52,12 @@ const mockTFile = {
 } as any;
 
 describe("Templater Utils", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		// Reset all mock implementations
+		mockApp.fileManager.processFrontMatter.mockReset();
+		mockApp.metadataCache.getFileCache.mockReset();
+	});
 	describe("isTemplaterAvailable", () => {
 		it("should return true when Templater plugin is available", () => {
 			const result = isTemplaterAvailable(mockApp);
@@ -202,6 +215,30 @@ describe("Templater Utils", () => {
 
 			expect(result).toBe(mockCreatedFile);
 			expect(callCount).toBeGreaterThan(2);
+		});
+
+		it("should not wait for file if no frontmatter provided", async () => {
+			const mockCreatedFile = {
+				path: "events/new-event.md",
+				name: "new-event.md",
+			} as any;
+
+			mockApp.vault.getFileByPath.mockReturnValue(mockTFile);
+			mockTemplaterPlugin.templater.create_new_note_from_template.mockResolvedValue(
+				mockCreatedFile
+			);
+
+			const result = await createFromTemplate(
+				mockApp,
+				"templates/event.md",
+				"events",
+				"new-event",
+				false
+			);
+
+			expect(result).toBe(mockCreatedFile);
+			// Should not attempt to process frontmatter
+			expect(mockApp.fileManager.processFrontMatter).not.toHaveBeenCalled();
 		});
 	});
 });

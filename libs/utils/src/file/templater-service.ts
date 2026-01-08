@@ -1,6 +1,11 @@
-import { type App, TFile } from "obsidian";
+import type { App, TFile } from "obsidian";
 import type { FileCreationOptions } from "./templater";
-import { createFromTemplate, isTemplaterAvailable } from "./templater";
+import {
+	createFileManually,
+	createFromTemplate,
+	isTemplaterAvailable,
+	shouldUseTemplate,
+} from "./templater";
 
 export type { FileCreationOptions };
 
@@ -27,67 +32,25 @@ export class TemplaterService {
 
 		const finalFilename = filename || title;
 
-		// If content is provided, use manual creation to preserve the content
 		if (content) {
-			return this.createManually(title, targetDirectory, finalFilename, content, frontmatter);
+			return createFileManually(this.app, targetDirectory, finalFilename, content, frontmatter);
 		}
 
-		// Try to use Templater if requested and available
-		if (useTemplater && templatePath && this.shouldUseTemplate(templatePath)) {
+		if (useTemplater && shouldUseTemplate(this.app, templatePath)) {
 			const templateFile = await createFromTemplate(
 				this.app,
-				templatePath,
+				templatePath!,
 				targetDirectory,
-				finalFilename
+				finalFilename,
+				false,
+				frontmatter
 			);
 
 			if (templateFile) {
-				// Apply frontmatter if provided
-				if (frontmatter && Object.keys(frontmatter).length > 0) {
-					await this.app.fileManager.processFrontMatter(templateFile, (fm) => {
-						Object.assign(fm, frontmatter);
-					});
-				}
 				return templateFile;
 			}
 		}
-
 		// Fallback to manual creation
-		return this.createManually(title, targetDirectory, finalFilename, content, frontmatter);
-	}
-
-	private shouldUseTemplate(templatePath: string): boolean {
-		return !!(templatePath && this.isAvailable() && this.app.vault.getFileByPath(templatePath));
-	}
-
-	private async createManually(
-		title: string,
-		targetDirectory: string,
-		filename: string,
-		customContent?: string,
-		frontmatter?: Record<string, unknown>
-	): Promise<TFile> {
-		const baseName = filename.replace(/\.md$/, "");
-		const filePath = `${targetDirectory}/${baseName}.md`;
-
-		// Check if file already exists
-		const existingFile = this.app.vault.getAbstractFileByPath(filePath);
-		if (existingFile instanceof TFile) {
-			return existingFile;
-		}
-
-		// Use custom content or default
-		const content = customContent || `# ${title}\n\n`;
-
-		const file = await this.app.vault.create(filePath, content);
-
-		// Apply frontmatter if provided
-		if (frontmatter && Object.keys(frontmatter).length > 0) {
-			await this.app.fileManager.processFrontMatter(file, (fm) => {
-				Object.assign(fm, frontmatter);
-			});
-		}
-
-		return file;
+		return createFileManually(this.app, targetDirectory, finalFilename, content, frontmatter);
 	}
 }

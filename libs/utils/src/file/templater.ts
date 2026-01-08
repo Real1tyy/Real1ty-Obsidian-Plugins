@@ -1,4 +1,6 @@
 import { type App, Notice, normalizePath, TFile } from "obsidian";
+import { waitForFileReady } from "./file-utils";
+import { createFileContentWithFrontmatter } from "./frontmatter-serialization";
 
 const TEMPLATER_ID = "templater-obsidian";
 
@@ -45,12 +47,58 @@ export function isTemplaterAvailable(app: App): boolean {
 	return !!instance;
 }
 
+/**
+ * Checks if a template should be used based on availability and file existence.
+ */
+export function shouldUseTemplate(app: App, templatePath: string | undefined): boolean {
+	return !!(
+		templatePath &&
+		templatePath.trim() !== "" &&
+		isTemplaterAvailable(app) &&
+		app.vault.getFileByPath(templatePath)
+	);
+}
+
+/**
+ * Creates a file manually with optional frontmatter and content.
+ * Returns existing file if it already exists.
+ */
+export async function createFileManually(
+	app: App,
+	targetDirectory: string,
+	filename: string,
+	content?: string,
+	frontmatter?: Record<string, unknown>
+): Promise<TFile> {
+	const baseName = filename.replace(/\.md$/, "");
+	const filePath = `${targetDirectory}/${baseName}.md`;
+
+	// Check if file already exists
+	const existingFile = app.vault.getAbstractFileByPath(filePath);
+	if (existingFile instanceof TFile) {
+		return existingFile;
+	}
+
+	const bodyContent = content || "";
+
+	let fileContent: string;
+	if (frontmatter && Object.keys(frontmatter).length > 0) {
+		fileContent = createFileContentWithFrontmatter(frontmatter, bodyContent);
+	} else {
+		fileContent = bodyContent;
+	}
+
+	const file = await app.vault.create(filePath, fileContent);
+	return file;
+}
+
 export async function createFromTemplate(
 	app: App,
 	templatePath: string,
 	targetFolder?: string,
 	filename?: string,
-	openNewNote = false
+	openNewNote = false,
+	frontmatter?: Record<string, unknown>
 ): Promise<TFile | null> {
 	const templater = await waitForTemplater(app);
 	if (!templater) {
@@ -76,7 +124,22 @@ export async function createFromTemplate(
 			openNewNote
 		);
 
-		return newFile ?? null;
+		if (!newFile) {
+			return null;
+		}
+
+		if (frontmatter && Object.keys(frontmatter).length > 0) {
+			const readyFile = await waitForFileReady(app, newFile.path);
+
+			if (readyFile) {
+				await app.fileManager.processFrontMatter(readyFile, (fm) => {
+					Object.assign(fm, frontmatter);
+				});
+				return readyFile;
+			}
+		}
+
+		return newFile;
 	} catch (error) {
 		console.error("Error creating file from template:", error);
 		new Notice("Error creating file from template. Please ensure the template file is valid.");
@@ -92,40 +155,27 @@ export async function createFileWithTemplate(
 		options;
 
 	const finalFilename = filename || title;
-	const baseName = finalFilename.replace(/\.md$/, "");
-	const filePath = normalizePath(`${targetDirectory}/${baseName}.md`);
 
-	const existingFile = app.vault.getAbstractFileByPath(filePath);
-	if (existingFile instanceof TFile) {
-		return existingFile;
+	// If content is provided, use manual creation to preserve the content
+	if (content) {
+		return createFileManually(app, targetDirectory, finalFilename, content, frontmatter);
 	}
 
-	if (useTemplater && templatePath && templatePath.trim() !== "" && isTemplaterAvailable(app)) {
+	// Try to use template if requested and available
+	if (useTemplater && shouldUseTemplate(app, templatePath)) {
 		const templateFile = await createFromTemplate(
 			app,
-			templatePath,
+			templatePath!,
 			targetDirectory,
-			finalFilename
+			finalFilename,
+			false,
+			frontmatter
 		);
 
 		if (templateFile) {
-			if (frontmatter && Object.keys(frontmatter).length > 0) {
-				await app.fileManager.processFrontMatter(templateFile, (fm) => {
-					Object.assign(fm, frontmatter);
-				});
-			}
 			return templateFile;
 		}
 	}
 
-	const fileContent = content || "";
-	const file = await app.vault.create(filePath, fileContent);
-
-	if (frontmatter && Object.keys(frontmatter).length > 0) {
-		await app.fileManager.processFrontMatter(file, (fm) => {
-			Object.assign(fm, frontmatter);
-		});
-	}
-
-	return file;
+	return createFileManually(app, targetDirectory, finalFilename, content, frontmatter);
 }

@@ -10,7 +10,7 @@ import { stringify as stringifyYAML } from "yaml";
  */
 export function createFileContentWithFrontmatter(
 	frontmatter: Record<string, unknown>,
-	content = "",
+	content = ""
 ): string {
 	if (!frontmatter || Object.keys(frontmatter).length === 0) {
 		// No frontmatter, just return content
