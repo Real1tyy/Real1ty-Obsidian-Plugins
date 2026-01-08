@@ -5,6 +5,7 @@ export * from "./file-utils";
 export * from "./frontmatter";
 export * from "./frontmatter-diff";
 export * from "./frontmatter-propagation";
+export * from "./frontmatter-serialization";
 export * from "./link-parser";
 export * from "./property-utils";
 export * from "./templater";
