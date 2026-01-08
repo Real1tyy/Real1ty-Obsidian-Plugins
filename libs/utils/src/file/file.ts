@@ -268,6 +268,50 @@ export function getUniqueFilePath(app: App, folder: string, baseName: string): s
 
 /**
  * Generates a unique file path by appending a counter if the file already exists.
+ * Accepts a complete file path and iterates with a counter suffix.
+ *
+ * @param app - The Obsidian App instance
+ * @param filePath - Complete file path including folder, name, and extension
+ * @returns Unique file path that doesn't exist in the vault
+ *
+ * @example
+ * ```ts
+ * // If "folder/note.md" exists, returns "folder/note 1.md"
+ * const path = getUniqueFilePathFromFull(app, "folder/note.md");
+ *
+ * // Works with any extension
+ * const path = getUniqueFilePathFromFull(app, "assets/image.png");
+ * // -> "assets/image 1.png" if image.png exists
+ * ```
+ */
+export const getUniqueFilePathFromFull = (app: App, filePath: string): string => {
+	// If file doesn't exist, return as-is
+	if (!app.vault.getAbstractFileByPath(filePath)) {
+		return filePath;
+	}
+
+	// Extract folder, base name, and extension
+	const lastSlashIndex = filePath.lastIndexOf("/");
+	const folderPath = lastSlashIndex !== -1 ? filePath.substring(0, lastSlashIndex + 1) : "";
+	const fileName = lastSlashIndex !== -1 ? filePath.substring(lastSlashIndex + 1) : filePath;
+
+	const lastDotIndex = fileName.lastIndexOf(".");
+	const baseName = lastDotIndex !== -1 ? fileName.substring(0, lastDotIndex) : fileName;
+	const extension = lastDotIndex !== -1 ? fileName.substring(lastDotIndex) : "";
+
+	let counter = 1;
+	let uniquePath = `${folderPath}${baseName} ${counter}${extension}`;
+
+	while (app.vault.getAbstractFileByPath(uniquePath)) {
+		counter++;
+		uniquePath = `${folderPath}${baseName} ${counter}${extension}`;
+	}
+
+	return uniquePath;
+};
+
+/**
+ * Generates a unique file path by appending a counter if the file already exists.
  * Supports custom file extensions.
  *
  * @param app - The Obsidian App instance
@@ -283,14 +327,8 @@ export const generateUniqueFilePath = (
 	extension: string = "md"
 ): string => {
 	const folderPath = folder ? `${folder}/` : "";
-	let filePath = `${folderPath}${baseName}.${extension}`;
-	let counter = 1;
-
-	while (app.vault.getAbstractFileByPath(filePath)) {
-		filePath = `${folderPath}${baseName} ${counter++}.${extension}`;
-	}
-
-	return filePath;
+	const fullPath = `${folderPath}${baseName}.${extension}`;
+	return getUniqueFilePathFromFull(app, fullPath);
 };
 
 // ============================================================================
