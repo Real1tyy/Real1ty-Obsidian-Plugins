@@ -60,19 +60,15 @@ export function shouldUseTemplate(app: App, templatePath: string | undefined): b
 }
 
 /**
- * Creates a file manually with optional frontmatter and content.
+ * Creates a file at the specified full path with optional frontmatter and content.
  * Returns existing file if it already exists.
  */
-export async function createFileManually(
+export async function createFileAtPath(
 	app: App,
-	targetDirectory: string,
-	filename: string,
+	filePath: string,
 	content?: string,
 	frontmatter?: Record<string, unknown>
 ): Promise<TFile> {
-	const baseName = filename.replace(/\.md$/, "");
-	const filePath = `${targetDirectory}/${baseName}.md`;
-
 	// Check if file already exists
 	const existingFile = app.vault.getAbstractFileByPath(filePath);
 	if (existingFile instanceof TFile) {
@@ -90,6 +86,23 @@ export async function createFileManually(
 
 	const file = await app.vault.create(filePath, fileContent);
 	return file;
+}
+
+/**
+ * Creates a file manually with optional frontmatter and content.
+ * Returns existing file if it already exists.
+ */
+export async function createFileManually(
+	app: App,
+	targetDirectory: string,
+	filename: string,
+	content?: string,
+	frontmatter?: Record<string, unknown>
+): Promise<TFile> {
+	const baseName = filename.replace(/\.md$/, "");
+	const filePath = `${targetDirectory}/${baseName}.md`;
+
+	return createFileAtPath(app, filePath, content, frontmatter);
 }
 
 export async function createFromTemplate(
