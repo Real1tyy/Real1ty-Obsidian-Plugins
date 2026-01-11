@@ -1,9 +1,7 @@
 import type { App } from "obsidian";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Frontmatter, FrontmatterDiff } from "../../src/file/frontmatter-diff";
-import {
-	applyFrontmatterChanges,
-} from "../../src/file/frontmatter-propagation";
+import { applyFrontmatterChanges } from "../../src/file/frontmatter-propagation";
 import { TFile } from "../../src/testing/mocks/obsidian";
 
 describe("applyFrontmatterChanges", () => {
