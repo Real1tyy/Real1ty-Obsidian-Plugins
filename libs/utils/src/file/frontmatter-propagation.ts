@@ -2,31 +2,6 @@ import type { App } from "obsidian";
 import { TFile } from "obsidian";
 import type { Frontmatter, FrontmatterDiff } from "./frontmatter-diff";
 
-export interface NexusPropertiesSettings {
-	excludedPropagatedProps?: string;
-	parentProp: string;
-	childrenProp: string;
-	relatedProp: string;
-	zettelIdProp: string;
-}
-
-export function parseExcludedProps(settings: NexusPropertiesSettings): Set<string> {
-	const excludedPropsStr = settings.excludedPropagatedProps || "";
-	const userExcluded = excludedPropsStr
-		.split(",")
-		.map((prop) => prop.trim())
-		.filter((prop) => prop.length > 0);
-
-	const alwaysExcluded = [
-		settings.parentProp,
-		settings.childrenProp,
-		settings.relatedProp,
-		settings.zettelIdProp,
-	];
-
-	return new Set([...alwaysExcluded, ...userExcluded]);
-}
-
 export async function applyFrontmatterChanges(
 	app: App,
 	targetPath: string,
