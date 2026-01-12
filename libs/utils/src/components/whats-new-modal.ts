@@ -27,17 +27,18 @@ export interface WhatsNewModalConfig {
 		/**
 		 * URL to support/donate page.
 		 */
-		support?: string;
+		support: string;
 
 		/**
 		 * URL to full changelog page.
 		 */
-		changelog?: string;
+		changelog: string;
 
 		/**
-		 * URL to documentation.
+		 * Base URL for documentation (used to resolve relative links in changelog).
+		 * Example: "https://docs.example.com" or "https://docs.example.com/"
 		 */
-		documentation?: string;
+		documentation: string;
 	};
 }
 
@@ -72,8 +73,8 @@ export class WhatsNewModal extends Modal {
 
 	/**
 	 * Makes external links in rendered markdown clickable by adding click handlers.
-	 * Finds all anchor tags with external URLs (http/https) and adds click events
-	 * that open the links in the user's default browser.
+	 * Handles both absolute URLs (http/https) and relative URLs (starting with /).
+	 * Relative URLs are resolved against the documentation base URL.
 	 */
 	private makeExternalLinksClickable(container: HTMLElement): void {
 		const links = container.querySelectorAll<HTMLAnchorElement>("a[href]");
@@ -81,16 +82,31 @@ export class WhatsNewModal extends Modal {
 		// Convert NodeList to Array for iteration
 		Array.from(links).forEach((link) => {
 			const href = link.getAttribute("href");
+			if (!href) return;
 
-			// Only handle external HTTP(S) links
-			if (href && (href.startsWith("http://") || href.startsWith("https://"))) {
+			let finalUrl: string | null = null;
+
+			// Handle absolute HTTP(S) links
+			if (href.startsWith("http://") || href.startsWith("https://")) {
+				finalUrl = href;
+			}
+			// Handle relative links (starting with /)
+			else if (href.startsWith("/")) {
+				// Get base documentation URL and ensure proper slash handling
+				const baseUrl = this.config.links.documentation;
+				const normalizedBase = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+				finalUrl = `${normalizedBase}${href}`;
+			}
+
+			// Add click handler for external links
+			if (finalUrl) {
 				link.addEventListener("click", (event: MouseEvent) => {
 					event.preventDefault();
-					window.open(href, "_blank");
+					window.open(finalUrl, "_blank");
 				});
 
 				// Add visual indicator that it's an external link
-				link.addClass("external-link");
+				link.classList.add("external-link");
 			}
 		});
 	}
@@ -112,26 +128,24 @@ export class WhatsNewModal extends Modal {
 			cls: this.cls("whats-new-subtitle"),
 		});
 
-		// Support section (optional)
-		if (this.config.links.support) {
-			const supportSection = contentEl.createDiv({
-				cls: this.cls("whats-new-support"),
-			});
+		// Support section
+		const supportSection = contentEl.createDiv({
+			cls: this.cls("whats-new-support"),
+		});
 
-			supportSection.createEl("h3", { text: "Support My Work" });
+		supportSection.createEl("h3", { text: "Support My Work" });
 
-			const supportText = supportSection.createEl("p");
-			supportText.createSpan({ text: "If you enjoy using this plugin, please consider " });
-			supportText.createEl("a", {
-				text: "supporting my work",
-				href: this.config.links.support,
-			});
-			supportText.createSpan({
-				text: ". Your support helps keep this plugin maintained and improved!",
-			});
+		const supportText = supportSection.createEl("p");
+		supportText.createSpan({ text: "If you enjoy using this plugin, please consider " });
+		supportText.createEl("a", {
+			text: "supporting my work",
+			href: this.config.links.support,
+		});
+		supportText.createSpan({
+			text: ". Your support helps keep this plugin maintained and improved!",
+		});
 
-			contentEl.createEl("hr");
-		}
+		contentEl.createEl("hr");
 
 		// Changelog content
 		const changelogSections = getChangelogSince(
@@ -169,25 +183,21 @@ export class WhatsNewModal extends Modal {
 			cls: this.cls("whats-new-buttons"),
 		});
 
-		// Full changelog button (optional)
-		if (this.config.links.changelog) {
-			const changelogBtn = buttonContainer.createEl("button", {
-				text: "Full Changelog",
-			});
-			changelogBtn.addEventListener("click", () => {
-				window.open(this.config.links.changelog, "_blank");
-			});
-		}
+		// Full changelog button
+		const changelogBtn = buttonContainer.createEl("button", {
+			text: "Full Changelog",
+		});
+		changelogBtn.addEventListener("click", () => {
+			window.open(this.config.links.changelog, "_blank");
+		});
 
-		// Documentation button (optional)
-		if (this.config.links.documentation) {
-			const docsBtn = buttonContainer.createEl("button", {
-				text: "Documentation",
-			});
-			docsBtn.addEventListener("click", () => {
-				window.open(this.config.links.documentation, "_blank");
-			});
-		}
+		// Documentation button
+		const docsBtn = buttonContainer.createEl("button", {
+			text: "Documentation",
+		});
+		docsBtn.addEventListener("click", () => {
+			window.open(this.config.links.documentation, "_blank");
+		});
 
 		// Close button (always present)
 		const closeBtn = buttonContainer.createEl("button", {
