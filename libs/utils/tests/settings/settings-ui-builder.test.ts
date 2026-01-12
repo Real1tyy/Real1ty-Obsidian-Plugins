@@ -46,6 +46,12 @@ vi.mock("obsidian", () => {
 			toggle.toggleEl.className = "checkbox-toggle";
 			this.containerEl.appendChild(toggle.toggleEl);
 
+			// Wire up setValue to actually set the checkbox
+			toggle.setValue.mockImplementation((value: boolean) => {
+				(toggle.toggleEl as HTMLInputElement).checked = value;
+				return toggle;
+			});
+
 			// Wire up onChange to actually update the checkbox
 			toggle.onChange.mockImplementation((handler: (value: boolean) => void) => {
 				toggle.toggleEl.addEventListener("change", () => {
@@ -206,6 +212,51 @@ const TestSchema = z.object({
 	username: z.string().default(""),
 	tags: z.array(z.string()).default([]),
 	directories: z.array(z.string()).default(["*"]),
+});
+
+// Nested test schema for testing dot notation
+const NestedTestSchema = z.object({
+	simple: z.string().default("test"),
+	nested: z
+		.object({
+			enabled: z.boolean().default(false),
+			count: z.number().min(0).max(100).default(10),
+			name: z.string().default(""),
+			tags: z.array(z.string()).default([]),
+			items: z.array(z.string()).default(["item1"]),
+		})
+		.default({
+			enabled: false,
+			count: 10,
+			name: "",
+			tags: [],
+			items: ["item1"],
+		}),
+	deeplyNested: z
+		.object({
+			level1: z
+				.object({
+					level2: z
+						.object({
+							value: z.string().default("deep"),
+						})
+						.default({
+							value: "deep",
+						}),
+				})
+				.default({
+					level2: {
+						value: "deep",
+					},
+				}),
+		})
+		.default({
+			level1: {
+				level2: {
+					value: "deep",
+				},
+			},
+		}),
 });
 
 describe("SettingsUIBuilder", () => {
@@ -694,6 +745,490 @@ describe("SettingsUIBuilder", () => {
 
 			// Should not render because condition is false (already has "*")
 			expect(resetButton).toBeUndefined();
+		});
+	});
+
+	describe("Nested Keys Support", () => {
+		let nestedContainer: HTMLElement;
+		let nestedSettingsStore: SettingsStore<typeof NestedTestSchema>;
+		let nestedUIBuilder: SettingsUIBuilder<typeof NestedTestSchema>;
+
+		beforeEach(() => {
+			// Setup DOM environment for nested tests
+			document.body.innerHTML = "";
+			nestedContainer = document.createElement("div");
+
+			// Helper to add Obsidian-specific methods to HTMLElements
+			const addObsidianMethods = (el: HTMLElement) => {
+				(el as any).createDiv = function (cls?: string) {
+					const div = document.createElement("div");
+					if (cls) div.className = cls;
+					addObsidianMethods(div);
+					this.appendChild(div);
+					return div;
+				};
+				(el as any).createEl = function (tag: string, options?: any) {
+					const element = document.createElement(tag);
+					if (options?.text) element.textContent = options.text;
+					if (options?.cls) element.className = options.cls;
+					addObsidianMethods(element);
+					this.appendChild(element);
+					return element;
+				};
+				(el as any).empty = function () {
+					this.innerHTML = "";
+				};
+				(el as any).setText = function (text: string) {
+					this.textContent = text;
+				};
+			};
+
+			addObsidianMethods(nestedContainer);
+			document.body.appendChild(nestedContainer);
+
+			// Create mock plugin
+			const mockPlugin = {
+				loadData: vi.fn().mockResolvedValue({}),
+				saveData: vi.fn().mockResolvedValue(undefined),
+			} as any;
+
+			// Create settings store with nested schema
+			nestedSettingsStore = new SettingsStore(mockPlugin, NestedTestSchema);
+
+			// Create UI builder
+			nestedUIBuilder = new SettingsUIBuilder(nestedSettingsStore);
+		});
+
+		describe("addToggle with nested keys", () => {
+			it("should read nested boolean value correctly", async () => {
+				await nestedSettingsStore.updateSettings((s) => ({
+					...s,
+					nested: { ...s.nested, enabled: true },
+				}));
+
+				// Create UI after settings are updated
+				nestedUIBuilder.addToggle(nestedContainer, {
+					key: "nested.enabled",
+					name: "Nested Enabled",
+					desc: "Toggle nested setting",
+				});
+
+				// Need to wait for next tick for DOM to update
+				await new Promise((resolve) => setTimeout(resolve, 0));
+
+				const toggle = nestedContainer.querySelector(".checkbox-toggle") as HTMLInputElement;
+				expect(toggle).toBeDefined();
+				expect(toggle.checked).toBe(true);
+			});
+
+			it("should update nested boolean value correctly", async () => {
+				nestedUIBuilder.addToggle(nestedContainer, {
+					key: "nested.enabled",
+					name: "Nested Enabled",
+					desc: "Toggle nested setting",
+				});
+
+				const toggle = nestedContainer.querySelector(".checkbox-toggle") as HTMLInputElement;
+				toggle.checked = true;
+				toggle.dispatchEvent(new Event("change"));
+
+				await new Promise((resolve) => setTimeout(resolve, 0));
+
+				expect(nestedSettingsStore.currentSettings.nested.enabled).toBe(true);
+			});
+
+			it("should preserve other nested properties when updating", async () => {
+				await nestedSettingsStore.updateSettings((s) => ({
+					...s,
+					nested: { ...s.nested, name: "preserved", count: 42 },
+				}));
+
+				nestedUIBuilder.addToggle(nestedContainer, {
+					key: "nested.enabled",
+					name: "Nested Enabled",
+					desc: "Toggle nested setting",
+				});
+
+				const toggle = nestedContainer.querySelector(".checkbox-toggle") as HTMLInputElement;
+				toggle.checked = true;
+				toggle.dispatchEvent(new Event("change"));
+
+				await new Promise((resolve) => setTimeout(resolve, 0));
+
+				expect(nestedSettingsStore.currentSettings.nested.enabled).toBe(true);
+				expect(nestedSettingsStore.currentSettings.nested.name).toBe("preserved");
+				expect(nestedSettingsStore.currentSettings.nested.count).toBe(42);
+			});
+		});
+
+		describe("addSlider with nested keys", () => {
+			it("should read nested number value correctly", async () => {
+				await nestedSettingsStore.updateSettings((s) => ({
+					...s,
+					nested: { ...s.nested, count: 75 },
+				}));
+
+				nestedUIBuilder.addSlider(nestedContainer, {
+					key: "nested.count",
+					name: "Nested Count",
+					desc: "Slider for nested count",
+					min: 0,
+					max: 100,
+				});
+
+				const slider = nestedContainer.querySelector(".slider") as HTMLInputElement;
+				expect(slider).toBeDefined();
+				expect(slider.value).toBe("75");
+			});
+
+			it("should update nested number value correctly", async () => {
+				nestedUIBuilder.addSlider(nestedContainer, {
+					key: "nested.count",
+					name: "Nested Count",
+					desc: "Slider for nested count",
+					min: 0,
+					max: 100,
+					commitOnChange: true,
+				});
+
+				const slider = nestedContainer.querySelector(".slider") as HTMLInputElement;
+				slider.value = "85";
+				slider.dispatchEvent(new Event("input"));
+
+				await new Promise((resolve) => setTimeout(resolve, 0));
+
+				expect(nestedSettingsStore.currentSettings.nested.count).toBe(85);
+			});
+
+			it("should infer bounds from nested schema", () => {
+				nestedUIBuilder.addSlider(nestedContainer, {
+					key: "nested.count",
+					name: "Nested Count",
+					desc: "Slider for nested count",
+				});
+
+				const slider = nestedContainer.querySelector(".slider") as HTMLInputElement;
+				expect(slider.min).toBe("0");
+				expect(slider.max).toBe("100");
+			});
+		});
+
+		describe("addText with nested keys", () => {
+			it("should read nested string value correctly", async () => {
+				await nestedSettingsStore.updateSettings((s) => ({
+					...s,
+					nested: { ...s.nested, name: "test-name" },
+				}));
+
+				nestedUIBuilder.addText(nestedContainer, {
+					key: "nested.name",
+					name: "Nested Name",
+					desc: "Text input for nested name",
+				});
+
+				const input = nestedContainer.querySelector(".text-input") as HTMLInputElement;
+				expect(input).toBeDefined();
+				expect(input.value).toBe("test-name");
+			});
+
+			it("should update nested string value correctly", async () => {
+				nestedUIBuilder.addText(nestedContainer, {
+					key: "nested.name",
+					name: "Nested Name",
+					desc: "Text input for nested name",
+					commitOnChange: true,
+				});
+
+				const input = nestedContainer.querySelector(".text-input") as HTMLInputElement;
+				input.value = "updated-name";
+				input.dispatchEvent(new Event("input"));
+
+				await new Promise((resolve) => setTimeout(resolve, 0));
+
+				expect(nestedSettingsStore.currentSettings.nested.name).toBe("updated-name");
+			});
+		});
+
+		describe("addTextArray with nested keys", () => {
+			it("should read nested array value correctly", async () => {
+				await nestedSettingsStore.updateSettings((s) => ({
+					...s,
+					nested: { ...s.nested, tags: ["tag1", "tag2", "tag3"] },
+				}));
+
+				nestedUIBuilder.addTextArray(nestedContainer, {
+					key: "nested.tags",
+					name: "Nested Tags",
+					desc: "Array input for nested tags",
+				});
+
+				const input = nestedContainer.querySelector(".text-input") as HTMLInputElement;
+				expect(input).toBeDefined();
+				expect(input.value).toBe("tag1, tag2, tag3");
+			});
+
+			it("should update nested array value correctly", async () => {
+				nestedUIBuilder.addTextArray(nestedContainer, {
+					key: "nested.tags",
+					name: "Nested Tags",
+					desc: "Array input for nested tags",
+					commitOnChange: true,
+				});
+
+				const input = nestedContainer.querySelector(".text-input") as HTMLInputElement;
+				input.value = "new1, new2, new3";
+				input.dispatchEvent(new Event("input"));
+
+				await new Promise((resolve) => setTimeout(resolve, 0));
+
+				expect(nestedSettingsStore.currentSettings.nested.tags).toEqual(["new1", "new2", "new3"]);
+			});
+
+			it("should handle multiline nested arrays", async () => {
+				nestedUIBuilder.addTextArray(nestedContainer, {
+					key: "nested.tags",
+					name: "Nested Tags",
+					desc: "Array input for nested tags",
+					multiline: true,
+				});
+
+				const textarea = nestedContainer.querySelector(".textarea-input") as HTMLTextAreaElement;
+				textarea.value = "line1\nline2\nline3";
+				textarea.dispatchEvent(new Event("blur"));
+
+				await new Promise((resolve) => setTimeout(resolve, 0));
+
+				expect(nestedSettingsStore.currentSettings.nested.tags).toEqual([
+					"line1",
+					"line2",
+					"line3",
+				]);
+			});
+		});
+
+		describe("addArrayManager with nested keys", () => {
+			it("should render nested array items correctly", async () => {
+				await nestedSettingsStore.updateSettings((s) => ({
+					...s,
+					nested: { ...s.nested, items: ["item1", "item2"] },
+				}));
+
+				nestedUIBuilder.addArrayManager(nestedContainer, {
+					key: "nested.items",
+					name: "Nested Items",
+					desc: "Manage nested items",
+				});
+
+				const items = nestedContainer.querySelectorAll(
+					".settings-array-manager-list .setting-item-name"
+				);
+				expect(items.length).toBe(2);
+				expect(items[0].textContent).toBe("item1");
+				expect(items[1].textContent).toBe("item2");
+			});
+
+			it("should add to nested array correctly", async () => {
+				await nestedSettingsStore.updateSettings((s) => ({
+					...s,
+					nested: { ...s.nested, items: ["item1"] },
+				}));
+
+				nestedUIBuilder.addArrayManager(nestedContainer, {
+					key: "nested.items",
+					name: "Nested Items",
+					desc: "Manage nested items",
+				});
+
+				// Use document.getElementById since ID doesn't have special chars needing escaping
+				const input = document.getElementById(
+					"settings-array-manager-input-nested.items"
+				) as HTMLInputElement;
+				const addButton = Array.from(nestedContainer.querySelectorAll(".button")).find(
+					(btn) => btn.textContent === "Add"
+				) as HTMLButtonElement;
+
+				expect(input).toBeDefined();
+				input.value = "item2";
+				addButton.click();
+
+				await new Promise((resolve) => setTimeout(resolve, 0));
+
+				expect(nestedSettingsStore.currentSettings.nested.items).toEqual(["item1", "item2"]);
+			});
+
+			it("should remove from nested array correctly", async () => {
+				await nestedSettingsStore.updateSettings((s) => ({
+					...s,
+					nested: { ...s.nested, items: ["item1", "item2"] },
+				}));
+
+				nestedUIBuilder.addArrayManager(nestedContainer, {
+					key: "nested.items",
+					name: "Nested Items",
+					desc: "Manage nested items",
+				});
+
+				const removeButtons = nestedContainer.querySelectorAll(
+					".settings-array-manager-list .button"
+				);
+				const firstRemoveButton = removeButtons[0] as HTMLButtonElement;
+
+				firstRemoveButton.click();
+
+				await new Promise((resolve) => setTimeout(resolve, 0));
+
+				expect(nestedSettingsStore.currentSettings.nested.items).toEqual(["item2"]);
+			});
+		});
+
+		describe("Deeply nested keys", () => {
+			it("should handle deeply nested string values", async () => {
+				await nestedSettingsStore.updateSettings((s) => ({
+					...s,
+					deeplyNested: {
+						level1: {
+							level2: {
+								value: "initial",
+							},
+						},
+					},
+				}));
+
+				nestedUIBuilder.addText(nestedContainer, {
+					key: "deeplyNested.level1.level2.value",
+					name: "Deep Value",
+					desc: "Deeply nested value",
+					commitOnChange: true,
+				});
+
+				const input = nestedContainer.querySelector(".text-input") as HTMLInputElement;
+				expect(input.value).toBe("initial");
+
+				input.value = "updated";
+				input.dispatchEvent(new Event("input"));
+
+				await new Promise((resolve) => setTimeout(resolve, 0));
+
+				expect(nestedSettingsStore.currentSettings.deeplyNested.level1.level2.value).toBe(
+					"updated"
+				);
+			});
+		});
+
+		describe("Edge cases and validation", () => {
+			it("should handle undefined nested values gracefully", () => {
+				// Don't initialize the nested value
+				nestedUIBuilder.addText(nestedContainer, {
+					key: "nested.name",
+					name: "Nested Name",
+					desc: "Text input for nested name",
+				});
+
+				const input = nestedContainer.querySelector(".text-input") as HTMLInputElement;
+				expect(input).toBeDefined();
+				// Should use default value from schema
+				expect(input.value).toBe("");
+			});
+
+			it("should validate nested updates against schema", async () => {
+				nestedUIBuilder.addSlider(nestedContainer, {
+					key: "nested.count",
+					name: "Nested Count",
+					desc: "Slider with validation",
+					min: 0,
+					max: 100,
+				});
+
+				const slider = nestedContainer.querySelector(".slider") as HTMLInputElement;
+
+				// HTML sliders automatically clamp values to their min/max
+				// So setting value="150" will be clamped to max="100"
+				slider.value = "150";
+				expect(slider.value).toBe("100"); // Clamped by browser
+
+				slider.dispatchEvent(new Event("mouseup"));
+				await new Promise((resolve) => setTimeout(resolve, 10));
+
+				// Value should be updated to 100 (the clamped max)
+				expect(nestedSettingsStore.currentSettings.nested.count).toBe(100);
+			});
+
+			it("should create missing intermediate objects when setting nested values", async () => {
+				nestedUIBuilder.addText(nestedContainer, {
+					key: "nested.name",
+					name: "Nested Name",
+					desc: "Text input for nested name",
+					commitOnChange: true,
+				});
+
+				const input = nestedContainer.querySelector(".text-input") as HTMLInputElement;
+				input.value = "new-value";
+				input.dispatchEvent(new Event("input"));
+
+				await new Promise((resolve) => setTimeout(resolve, 0));
+
+				expect(nestedSettingsStore.currentSettings.nested.name).toBe("new-value");
+				// Other nested properties should still have their default values
+				expect(nestedSettingsStore.currentSettings.nested.enabled).toBe(false);
+				expect(nestedSettingsStore.currentSettings.nested.count).toBe(10);
+			});
+		});
+
+		describe("Backward compatibility with flat keys", () => {
+			it("should still work with top-level flat keys", async () => {
+				nestedUIBuilder.addText(nestedContainer, {
+					key: "simple",
+					name: "Simple",
+					desc: "Flat key test",
+					commitOnChange: true,
+				});
+
+				const input = nestedContainer.querySelector(".text-input") as HTMLInputElement;
+				expect(input.value).toBe("test");
+
+				input.value = "updated-simple";
+				input.dispatchEvent(new Event("input"));
+
+				await new Promise((resolve) => setTimeout(resolve, 0));
+
+				expect(nestedSettingsStore.currentSettings.simple).toBe("updated-simple");
+			});
+
+			it("should handle mix of flat and nested keys", async () => {
+				nestedUIBuilder.addText(nestedContainer, {
+					key: "simple",
+					name: "Simple",
+					desc: "Flat key",
+					commitOnChange: true,
+				});
+
+				nestedUIBuilder.addText(nestedContainer, {
+					key: "nested.name",
+					name: "Nested Name",
+					desc: "Nested key",
+					commitOnChange: true,
+				});
+
+				const inputs = nestedContainer.querySelectorAll(
+					".text-input"
+				) as NodeListOf<HTMLInputElement>;
+				expect(inputs.length).toBe(2);
+
+				// Update flat key
+				inputs[0].value = "updated-flat";
+				inputs[0].dispatchEvent(new Event("input"));
+
+				await new Promise((resolve) => setTimeout(resolve, 0));
+
+				// Update nested key
+				inputs[1].value = "updated-nested";
+				inputs[1].dispatchEvent(new Event("input"));
+
+				await new Promise((resolve) => setTimeout(resolve, 0));
+
+				expect(nestedSettingsStore.currentSettings.simple).toBe("updated-flat");
+				expect(nestedSettingsStore.currentSettings.nested.name).toBe("updated-nested");
+			});
 		});
 	});
 });

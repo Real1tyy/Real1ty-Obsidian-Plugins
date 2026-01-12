@@ -66,11 +66,50 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 		return this.settingsStore.validationSchema;
 	}
 
-	private async updateSetting(key: keyof z.infer<TSchema>, value: unknown): Promise<void> {
-		const newSettings = {
-			...this.settings,
-			[key]: value,
-		} as z.infer<TSchema>;
+	/**
+	 * Gets a nested property value using dot notation (e.g., "basesView.tasksDirectory")
+	 */
+	private getNestedValue(key: string): unknown {
+		const keys = key.split(".");
+		let value: any = this.settings;
+
+		for (const k of keys) {
+			if (value === undefined || value === null) {
+				return undefined;
+			}
+			value = value[k];
+		}
+
+		return value;
+	}
+
+	/**
+	 * Sets a nested property value using dot notation and returns updated settings
+	 */
+	private setNestedValue(key: string, value: unknown): z.infer<TSchema> {
+		const keys = key.split(".");
+		const newSettings = JSON.parse(JSON.stringify(this.settings)); // Deep clone
+
+		let current: any = newSettings;
+
+		// Navigate to the parent of the target property
+		for (let i = 0; i < keys.length - 1; i++) {
+			const k = keys[i];
+			if (!(k in current)) {
+				current[k] = {};
+			}
+			current = current[k];
+		}
+
+		// Set the final property
+		const lastKey = keys[keys.length - 1];
+		current[lastKey] = value;
+
+		return newSettings;
+	}
+
+	private async updateSetting(key: string, value: unknown): Promise<void> {
+		const newSettings = this.setNestedValue(key, value);
 
 		const result = this.schema.safeParse(newSettings);
 
@@ -87,7 +126,21 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 
 	private inferSliderBounds(key: string): { min?: number; max?: number; step?: number } {
 		try {
-			const fieldSchema = (this.schema.shape as any)[key];
+			// Navigate nested schema using dot notation
+			const keys = key.split(".");
+			let fieldSchema: any = this.schema.shape;
+
+			for (const k of keys) {
+				if (!fieldSchema) return {};
+
+				// Unwrap nested schemas
+				while ((fieldSchema as any)._def?.innerType) {
+					fieldSchema = (fieldSchema as any)._def.innerType;
+				}
+
+				fieldSchema = (fieldSchema as any).shape?.[k] ?? (fieldSchema as any)[k];
+			}
+
 			if (!fieldSchema) return {};
 
 			let innerSchema = fieldSchema;
@@ -120,7 +173,21 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 
 	private inferArrayItemType(key: string): "string" | "number" | undefined {
 		try {
-			const fieldSchema = (this.schema.shape as any)[key];
+			// Navigate nested schema using dot notation
+			const keys = key.split(".");
+			let fieldSchema: any = this.schema.shape;
+
+			for (const k of keys) {
+				if (!fieldSchema) return undefined;
+
+				// Unwrap nested schemas
+				while ((fieldSchema as any)._def?.innerType) {
+					fieldSchema = (fieldSchema as any)._def.innerType;
+				}
+
+				fieldSchema = (fieldSchema as any).shape?.[k] ?? (fieldSchema as any)[k];
+			}
+
 			if (!fieldSchema) return undefined;
 
 			let innerSchema = fieldSchema;
@@ -146,21 +213,21 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 
 	addToggle(containerEl: HTMLElement, config: BaseSettingConfig): void {
 		const { key, name, desc } = config;
-		const value = this.settings[key as keyof z.infer<TSchema>];
+		const value = this.getNestedValue(key);
 
 		new Setting(containerEl)
 			.setName(name)
 			.setDesc(desc)
 			.addToggle((toggle) =>
 				toggle.setValue(Boolean(value)).onChange(async (newValue) => {
-					await this.updateSetting(key as keyof z.infer<TSchema>, newValue);
+					await this.updateSetting(key, newValue);
 				})
 			);
 	}
 
 	addSlider(containerEl: HTMLElement, config: SliderSettingConfig): void {
 		const { key, name, desc, step = 1, commitOnChange = false } = config;
-		const value = this.settings[key as keyof z.infer<TSchema>];
+		const value = this.getNestedValue(key);
 
 		const inferredBounds = this.inferSliderBounds(key);
 		const min = config.min ?? inferredBounds.min ?? 0;
@@ -175,13 +242,13 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 				if (commitOnChange) {
 					// Reactive: commit on every change
 					slider.onChange(async (newValue) => {
-						await this.updateSetting(key as keyof z.infer<TSchema>, newValue);
+						await this.updateSetting(key, newValue);
 					});
 				} else {
 					// Commit only when user finishes dragging
 					const commit = async (newValue: number) => {
 						try {
-							await this.updateSetting(key as keyof z.infer<TSchema>, newValue);
+							await this.updateSetting(key, newValue);
 						} catch (error) {
 							new Notice(`Invalid input: ${error}`, 5000);
 						}
@@ -213,7 +280,7 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 
 	addText(containerEl: HTMLElement, config: TextSettingConfig): void {
 		const { key, name, desc, placeholder = "", commitOnChange = false } = config;
-		const value = this.settings[key as keyof z.infer<TSchema>];
+		const value = this.getNestedValue(key);
 
 		new Setting(containerEl)
 			.setName(name)
@@ -225,13 +292,13 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 				if (commitOnChange) {
 					// Reactive: commit on every change
 					text.onChange(async (newValue) => {
-						await this.updateSetting(key as keyof z.infer<TSchema>, newValue);
+						await this.updateSetting(key, newValue);
 					});
 				} else {
 					// Commit only on blur or Ctrl/Cmd+Enter
 					const commit = async (inputValue: string) => {
 						try {
-							await this.updateSetting(key as keyof z.infer<TSchema>, inputValue);
+							await this.updateSetting(key, inputValue);
 						} catch (error) {
 							new Notice(`Invalid input: ${error}`, 5000);
 						}
@@ -250,7 +317,7 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 
 	addDropdown(containerEl: HTMLElement, config: DropdownSettingConfig): void {
 		const { key, name, desc, options } = config;
-		const value = this.settings[key as keyof z.infer<TSchema>];
+		const value = this.getNestedValue(key);
 
 		new Setting(containerEl)
 			.setName(name)
@@ -260,7 +327,7 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 					.addOptions(options)
 					.setValue(String(value))
 					.onChange(async (newValue) => {
-						await this.updateSetting(key as keyof z.infer<TSchema>, newValue);
+						await this.updateSetting(key, newValue);
 					})
 			);
 	}
@@ -275,7 +342,7 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 			multiline = false,
 			commitOnChange = false,
 		} = config;
-		const value = this.settings[key as keyof z.infer<TSchema>] as T[];
+		const value = this.getNestedValue(key) as T[];
 
 		const inferredItemType = config.itemType ?? this.inferArrayItemType(key) ?? "string";
 		const parser =
@@ -308,7 +375,7 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 
 					try {
 						const items = lines.map(parser).filter(validator);
-						await this.updateSetting(key as keyof z.infer<TSchema>, items);
+						await this.updateSetting(key, items);
 					} catch (error) {
 						new Notice(`Invalid input: ${error}`, 5000);
 					}
@@ -346,7 +413,7 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 
 					try {
 						const items = tokens.map(parser).filter(validator);
-						await this.updateSetting(key as keyof z.infer<TSchema>, items);
+						await this.updateSetting(key, items);
 					} catch (error) {
 						new Notice(`Invalid input: ${error}`, 5000);
 					}
@@ -373,7 +440,6 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 
 	/**
 	 * Advanced array manager with add/remove buttons for each item
-	 * Similar to the directory settings pattern
 	 */
 	addArrayManager(containerEl: HTMLElement, config: ArrayManagerConfig): void {
 		const {
@@ -406,7 +472,7 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 		const render = () => {
 			listContainer.empty();
 
-			const currentItems = (this.settings[key as keyof z.infer<TSchema>] as unknown[]) ?? [];
+			const currentItems = (this.getNestedValue(key) as unknown[]) ?? [];
 
 			for (const item of currentItems) {
 				const itemSetting = new Setting(listContainer).setName(String(item)).addButton((button) =>
@@ -428,7 +494,7 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 									: [emptyArrayFallback];
 							}
 
-							await this.updateSetting(key as keyof z.infer<TSchema>, newItems);
+							await this.updateSetting(key, newItems);
 							render();
 						})
 				);
@@ -456,14 +522,20 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 					.setButtonText(addButtonText)
 					.setCta()
 					.onClick(async () => {
-						const input = containerEl.querySelector(`#${inputId}`) as HTMLInputElement;
+						// Use document.getElementById instead of querySelector to avoid CSS selector issues with dots
+						const input = document.getElementById(inputId) as HTMLInputElement;
+						if (!input) {
+							console.error(`Input element not found: ${inputId}`);
+							return;
+						}
+
 						const newItem = input.value.trim();
 
 						if (!newItem) {
 							return;
 						}
 
-						const currentItems = (this.settings[key as keyof z.infer<TSchema>] as unknown[]) ?? [];
+						const currentItems = (this.getNestedValue(key) as unknown[]) ?? [];
 						let newItems = [...currentItems];
 
 						// Apply custom logic before adding
@@ -476,7 +548,7 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 							}
 						}
 
-						await this.updateSetting(key as keyof z.infer<TSchema>, newItems);
+						await this.updateSetting(key, newItems);
 						input.value = "";
 						render();
 					})
@@ -484,7 +556,7 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 
 		// Quick actions
 		for (const quickAction of quickActions) {
-			const currentItems = (this.settings[key as keyof z.infer<TSchema>] as unknown[]) ?? [];
+			const currentItems = (this.getNestedValue(key) as unknown[]) ?? [];
 
 			// Check condition if provided
 			if (quickAction.condition && !quickAction.condition(currentItems)) {
@@ -496,9 +568,9 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 				.setDesc(quickAction.desc)
 				.addButton((button) =>
 					button.setButtonText(quickAction.buttonText).onClick(async () => {
-						const currentItems = (this.settings[key as keyof z.infer<TSchema>] as unknown[]) ?? [];
+						const currentItems = (this.getNestedValue(key) as unknown[]) ?? [];
 						const newItems = await quickAction.action(currentItems);
-						await this.updateSetting(key as keyof z.infer<TSchema>, newItems);
+						await this.updateSetting(key, newItems);
 						render();
 					})
 				);
