@@ -70,6 +70,31 @@ export class WhatsNewModal extends Modal {
 		el.classList.add(this.cls(suffix));
 	}
 
+	/**
+	 * Makes external links in rendered markdown clickable by adding click handlers.
+	 * Finds all anchor tags with external URLs (http/https) and adds click events
+	 * that open the links in the user's default browser.
+	 */
+	private makeExternalLinksClickable(container: HTMLElement): void {
+		const links = container.querySelectorAll<HTMLAnchorElement>("a[href]");
+
+		// Convert NodeList to Array for iteration
+		Array.from(links).forEach((link) => {
+			const href = link.getAttribute("href");
+
+			// Only handle external HTTP(S) links
+			if (href && (href.startsWith("http://") || href.startsWith("https://"))) {
+				link.addEventListener("click", (event: MouseEvent) => {
+					event.preventDefault();
+					window.open(href, "_blank");
+				});
+
+				// Add visual indicator that it's an external link
+				link.addClass("external-link");
+			}
+		});
+	}
+
 	async onOpen() {
 		const { contentEl } = this;
 		contentEl.empty();
@@ -134,6 +159,9 @@ export class WhatsNewModal extends Modal {
 				"/",
 				this.plugin
 			);
+
+			// Make external links clickable
+			this.makeExternalLinksClickable(changelogContainer);
 		}
 
 		// Action buttons
