@@ -522,7 +522,6 @@ export class SettingsUIBuilder<TSchema extends ZodObject<ZodRawShape>> {
 					.setButtonText(addButtonText)
 					.setCta()
 					.onClick(async () => {
-						// Use document.getElementById instead of querySelector to avoid CSS selector issues with dots
 						const input = document.getElementById(inputId) as HTMLInputElement;
 						if (!input) {
 							console.error(`Input element not found: ${inputId}`);
