@@ -2,6 +2,23 @@ import type { App, Plugin } from "obsidian";
 import { MarkdownRenderer, Modal } from "obsidian";
 import { formatChangelogSections, getChangelogSince } from "../string/changelog-parser";
 
+/**
+ * Default URLs for the What's New modal.
+ * These can be overridden in the config.
+ */
+export const DEFAULT_WHATS_NEW_LINKS = {
+	/**
+	 * Default tools page showcasing all plugins and productivity software.
+	 */
+	TOOLS: "https://matejvavroproductivity.com/tools/",
+
+	/**
+	 * Default YouTube channel with Obsidian tutorials and productivity tips.
+	 * Includes subscription confirmation parameter.
+	 */
+	YOUTUBE: "https://www.youtube.com/@MatejVavroProductivity?sub_confirmation=1",
+} as const;
+
 export interface WhatsNewModalConfig {
 	/**
 	 * The CSS class prefix/suffix to use for styling.
@@ -39,6 +56,18 @@ export interface WhatsNewModalConfig {
 		 * Example: "https://docs.example.com" or "https://docs.example.com/"
 		 */
 		documentation: string;
+
+		/**
+		 * URL to tools page showcasing all plugins and productivity tools.
+		 * Defaults to DEFAULT_WHATS_NEW_LINKS.TOOLS if not provided.
+		 */
+		tools?: string;
+
+		/**
+		 * URL to YouTube channel with tutorials and productivity tips.
+		 * Defaults to DEFAULT_WHATS_NEW_LINKS.YOUTUBE if not provided.
+		 */
+		youtube?: string;
 	};
 }
 
@@ -145,6 +174,35 @@ export class WhatsNewModal extends Modal {
 			text: ". Your support helps keep this plugin maintained and improved!",
 		});
 
+		// Discover more section
+		const discoverSection = contentEl.createDiv({
+			cls: this.cls("whats-new-discover"),
+		});
+
+		discoverSection.createEl("h3", { text: "Discover More" });
+
+		// Other tools
+		const toolsText = discoverSection.createEl("p");
+		toolsText.createSpan({ text: "🔧 Check out my " });
+		toolsText.createEl("a", {
+			text: "other plugins and productivity tools",
+			href: this.config.links.tools ?? DEFAULT_WHATS_NEW_LINKS.TOOLS,
+		});
+		toolsText.createSpan({
+			text: " to enhance your workflow even further.",
+		});
+
+		// YouTube channel
+		const youtubeText = discoverSection.createEl("p");
+		youtubeText.createSpan({ text: "📺 Subscribe to my " });
+		youtubeText.createEl("a", {
+			text: "YouTube channel",
+			href: this.config.links.youtube ?? DEFAULT_WHATS_NEW_LINKS.YOUTUBE,
+		});
+		youtubeText.createSpan({
+			text: " for Obsidian tutorials and productivity tips!",
+		});
+
 		contentEl.createEl("hr");
 
 		// Changelog content
@@ -197,6 +255,22 @@ export class WhatsNewModal extends Modal {
 		});
 		docsBtn.addEventListener("click", () => {
 			window.open(this.config.links.documentation, "_blank");
+		});
+
+		// Tools button
+		const toolsBtn = buttonContainer.createEl("button", {
+			text: "My Tools",
+		});
+		toolsBtn.addEventListener("click", () => {
+			window.open(this.config.links.tools ?? DEFAULT_WHATS_NEW_LINKS.TOOLS, "_blank");
+		});
+
+		// YouTube button
+		const youtubeBtn = buttonContainer.createEl("button", {
+			text: "YouTube Channel",
+		});
+		youtubeBtn.addEventListener("click", () => {
+			window.open(this.config.links.youtube ?? DEFAULT_WHATS_NEW_LINKS.YOUTUBE, "_blank");
 		});
 
 		// Close button (always present)
