@@ -1,6 +1,6 @@
 import type { App, Plugin } from "obsidian";
 import { MarkdownRenderer, Modal } from "obsidian";
-import { formatChangelogSections, getChangelogSince } from "../string/changelog-parser";
+import { formatChangelogSections, getChangelogSince } from "../string";
 
 /**
  * Default URLs for the What's New modal.
@@ -58,6 +58,11 @@ export interface WhatsNewModalConfig {
 		documentation: string;
 
 		/**
+		 * URL to GitHub repository.
+		 */
+		github: string;
+
+		/**
 		 * URL to tools page showcasing all plugins and productivity tools.
 		 * Defaults to DEFAULT_WHATS_NEW_LINKS.TOOLS if not provided.
 		 */
@@ -84,10 +89,8 @@ export interface WhatsNewModalConfig {
  * - `.{prefix}-whats-new-modal` - Applied to the main content element
  * - `.{prefix}-whats-new-modal .modal` - Modal dialog styling (max-width, width)
  *
- * ### Header Section
- * - `.{prefix}-whats-new-header` - Container for the header section
- *   - Contains h2 (title) and subtitle paragraph
- * - `.{prefix}-whats-new-header h2` - Main title styling
+ * ### Title and Subtitle
+ * - Modal title is set via `setTitle()` - Obsidian handles the styling and X close button
  * - `.{prefix}-whats-new-subtitle` - Subtitle text ("Changes since vX.X.X")
  *
  * ### Support Section
@@ -113,11 +116,9 @@ export interface WhatsNewModalConfig {
  *
  * ### Sticky Footer
  * - `.{prefix}-whats-new-sticky-footer` - Footer container (should be sticky)
- * - `.{prefix}-whats-new-modal hr` - Separator line in footer
- * - `.{prefix}-whats-new-separator` - Separator with custom class
+ *   - Has border-top to separate from content
  * - `.{prefix}-whats-new-buttons` - Button container
  * - `.{prefix}-whats-new-buttons button` - Individual buttons
- * - `.{prefix}-mod-cta` - Primary/CTA button state (applied to Close button)
  *
  * ## Example CSS Implementation
  *
@@ -128,25 +129,45 @@ export interface WhatsNewModalConfig {
  *   width: 90%;
  * }
  *
- * // Header
- * .my-plugin-whats-new-header {
- *   margin-bottom: 1.5rem;
+ * // Plugin Name Link (in title)
+ * .my-plugin-whats-new-plugin-name {
+ *   color: var(--link-color);
+ *   text-decoration: none;
+ *   transition: all 0.2s ease;
+ *   position: relative;
+ *   font-weight: 600;
  * }
  *
- * .my-plugin-whats-new-header h2 {
- *   margin-bottom: 0.5rem;
- *   color: var(--text-normal);
+ * .my-plugin-whats-new-plugin-name:hover {
+ *   color: var(--link-color-hover);
+ *   text-decoration: none;
  * }
  *
+ * .my-plugin-whats-new-plugin-name::after {
+ *   content: '';
+ *   position: absolute;
+ *   bottom: -2px;
+ *   left: 0;
+ *   width: 0;
+ *   height: 2px;
+ *   background-color: var(--interactive-accent);
+ *   transition: width 0.3s ease;
+ * }
+ *
+ * .my-plugin-whats-new-plugin-name:hover::after {
+ *   width: 100%;
+ * }
+ *
+ * // Subtitle
  * .my-plugin-whats-new-subtitle {
  *   color: var(--text-muted);
  *   font-size: 0.9rem;
- *   margin: 0;
+ *   margin: 0 0 1rem 0;
  * }
  *
  * // Support Section (with donation, tools, and YouTube links)
  * .my-plugin-whats-new-support {
- *   margin: 1.5rem 0;
+ *   margin: 0 0 1rem 0;
  *   padding: 1rem;
  *   background-color: var(--background-secondary);
  *   border-radius: 8px;
@@ -166,17 +187,35 @@ export interface WhatsNewModalConfig {
  * .my-plugin-whats-new-support a {
  *   color: var(--link-color);
  *   text-decoration: none;
+ *   transition: all 0.2s ease;
+ *   position: relative;
  * }
  *
  * .my-plugin-whats-new-support a:hover {
- *   text-decoration: underline;
+ *   color: var(--link-color-hover);
+ *   text-decoration: none;
+ * }
+ *
+ * .my-plugin-whats-new-support a::after {
+ *   content: '';
+ *   position: absolute;
+ *   bottom: -2px;
+ *   left: 0;
+ *   width: 0;
+ *   height: 2px;
+ *   background-color: var(--interactive-accent);
+ *   transition: width 0.3s ease;
+ * }
+ *
+ * .my-plugin-whats-new-support a:hover::after {
+ *   width: 100%;
  * }
  *
  * // Changelog Content (Scrollable Area)
  * .my-plugin-whats-new-content {
- *   max-height: 500px;
+ *   max-height: 400px;
  *   overflow-y: auto;
- *   margin-bottom: 1.5rem;
+ *   margin-bottom: 1rem;
  *   padding-right: 0.5rem;
  *   border-radius: 8px;
  * }
@@ -239,50 +278,44 @@ export interface WhatsNewModalConfig {
  *   position: sticky;
  *   bottom: 0;
  *   background: var(--background-primary);
- *   padding-top: 1rem;
- *   margin-top: 1rem;
+ *   padding-top: 0.75rem;
+ *   margin-top: 0;
  *   z-index: 10;
- *   border-top: 1px solid var(--background-modifier-border);
- * }
- *
- * .my-plugin-whats-new-modal hr,
- * .my-plugin-whats-new-separator {
- *   margin: 0 0 1rem 0;
- *   border: none;
  *   border-top: 1px solid var(--background-modifier-border);
  * }
  *
  * .my-plugin-whats-new-buttons {
  *   display: flex;
  *   gap: 0.5rem;
- *   justify-content: flex-end;
+ *   justify-content: space-between;
  *   flex-wrap: wrap;
- *   margin-top: 1rem;
  *   padding-bottom: 0.5rem;
+ *   width: 100%;
  * }
  *
  * .my-plugin-whats-new-buttons button {
+ *   flex: 1;
+ *   min-width: 0;
  *   padding: 0.5rem 1rem;
  *   border-radius: 4px;
  *   cursor: pointer;
  *   border: 1px solid var(--background-modifier-border);
  *   background: var(--interactive-normal);
  *   color: var(--text-normal);
- *   transition: background-color 0.2s;
+ *   transition: all 0.2s ease;
+ *   text-align: center;
  * }
  *
  * .my-plugin-whats-new-buttons button:hover {
  *   background: var(--interactive-hover);
- * }
- *
- * .my-plugin-whats-new-buttons button.my-plugin-mod-cta {
- *   background: var(--interactive-accent);
- *   color: var(--text-on-accent);
  *   border-color: var(--interactive-accent);
+ *   transform: translateY(-1px);
+ *   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
  * }
  *
- * .my-plugin-whats-new-buttons button.my-plugin-mod-cta:hover {
- *   background: var(--interactive-accent-hover);
+ * .my-plugin-whats-new-buttons button:active {
+ *   transform: translateY(0);
+ *   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
  * }
  * ```
  *
@@ -372,13 +405,28 @@ export class WhatsNewModal extends Modal {
 
 		this.addCls(contentEl, "whats-new-modal");
 
-		// Header section
-		const header = contentEl.createDiv({ cls: this.cls("whats-new-header") });
-		header.createEl("h2", {
-			text: `${this.config.pluginName} updated to v${this.toVersion}`,
+		this.setTitle("");
+
+		const titleEl = this.titleEl;
+		titleEl.empty();
+
+		const pluginNameLink = titleEl.createEl("a", {
+			text: this.config.pluginName,
+			cls: this.cls("whats-new-plugin-name"),
+			href: "#",
 		});
 
-		header.createEl("p", {
+		pluginNameLink.addEventListener("click", (e) => {
+			e.preventDefault();
+			window.open(this.config.links.github, "_blank");
+		});
+
+		titleEl.createSpan({
+			text: ` updated to v${this.toVersion}`,
+		});
+
+		// Subtitle
+		contentEl.createEl("p", {
 			text: `Changes since v${this.fromVersion}`,
 			cls: this.cls("whats-new-subtitle"),
 		});
@@ -388,42 +436,34 @@ export class WhatsNewModal extends Modal {
 			cls: this.cls("whats-new-support"),
 		});
 
-		supportSection.createEl("h3", { text: "Support My Work" });
+		supportSection.createEl("h3", { text: "Support the development of this plugin" });
 
-		// Support/donate
-		const supportText = supportSection.createEl("p");
-		supportText.createSpan({ text: "If you enjoy using this plugin, please consider " });
-		supportText.createEl("a", {
-			text: "supporting my work",
+		const introText = supportSection.createEl("p");
+		introText.setText(
+			"If this plugin saves you time or improves how you work in Obsidian, consider supporting its development. Your support helps fund ongoing maintenance, new features, and long-term stability."
+		);
+
+		const supportLinkText = supportSection.createEl("p");
+		supportLinkText.createSpan({ text: "👉 " });
+		supportLinkText.createEl("a", {
+			text: "Support my work",
 			href: this.config.links.support,
 		});
-		supportText.createSpan({
-			text: ". Your support helps keep this plugin maintained and improved!",
-		});
 
-		// Other tools
-		const toolsText = supportSection.createEl("p");
-		toolsText.createSpan({ text: "Check out my " });
-		toolsText.createEl("a", {
-			text: "other plugins and productivity tools",
+		const exploreText = supportSection.createEl("p");
+		exploreText.createSpan({ text: "You can also explore my " });
+		exploreText.createEl("a", {
+			text: "other Obsidian plugins and productivity tools",
 			href: this.config.links.tools ?? DEFAULT_WHATS_NEW_LINKS.TOOLS,
 		});
-		toolsText.createSpan({
-			text: " to enhance your workflow even further.",
-		});
-
-		// YouTube channel
-		const youtubeText = supportSection.createEl("p");
-		youtubeText.createSpan({ text: "Subscribe to my " });
-		youtubeText.createEl("a", {
+		exploreText.createSpan({ text: ", or follow my " });
+		exploreText.createEl("a", {
 			text: "YouTube channel",
 			href: this.config.links.youtube ?? DEFAULT_WHATS_NEW_LINKS.YOUTUBE,
 		});
-		youtubeText.createSpan({
-			text: " for Obsidian tutorials and productivity tips!",
+		exploreText.createSpan({
+			text: " for in-depth tutorials and workflow ideas.",
 		});
-
-		contentEl.createEl("hr");
 
 		// Changelog content
 		const changelogSections = getChangelogSince(
@@ -461,14 +501,17 @@ export class WhatsNewModal extends Modal {
 			cls: this.cls("whats-new-sticky-footer"),
 		});
 
-		// Separator line
-		stickyFooter.createEl("hr", {
-			cls: this.cls("whats-new-separator"),
-		});
-
 		// Action buttons
 		const buttonContainer = stickyFooter.createDiv({
 			cls: this.cls("whats-new-buttons"),
+		});
+
+		// GitHub button
+		const githubBtn = buttonContainer.createEl("button", {
+			text: "GitHub",
+		});
+		githubBtn.addEventListener("click", () => {
+			window.open(this.config.links.github, "_blank");
 		});
 
 		// Full changelog button
@@ -502,13 +545,6 @@ export class WhatsNewModal extends Modal {
 		youtubeBtn.addEventListener("click", () => {
 			window.open(this.config.links.youtube ?? DEFAULT_WHATS_NEW_LINKS.YOUTUBE, "_blank");
 		});
-
-		// Close button (always present)
-		const closeBtn = buttonContainer.createEl("button", {
-			text: "Close",
-			cls: this.cls("mod-cta"),
-		});
-		closeBtn.addEventListener("click", () => this.close());
 	}
 
 	onClose() {
